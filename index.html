@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdventureQuest - Creador de Pruebas</title>
+    <link rel="stylesheet" href="admin-styles.css">
+</head>
+<body>
+    <div id="admin-container">
+        <h1>AdventureQuest - Panel de Administración</h1>
+
+        <nav class="tabs">
+            <button class="tab-button active" data-tab="games-management">Gestión de Juegos</button>
+            <button class="tab-button" data-tab="locations-management">Gestión de Localizaciones</button>
+            <button class="tab-button" data-tab="trials-management">Gestión de Pruebas</button>
+            <button class="tab-button" data-tab="rankings-view">Ver Rankings</button>
+        </nav>
+
+        <section id="games-management" class="tab-content active">
+            <h2>Gestionar Juegos</h2>
+            <button id="new-game-btn" class="add-button">Crear Nuevo Juego</button>
+            <div id="game-list">
+                <p>Cargando juegos...</p>
+            </div>
+
+            <div id="game-form-container" class="form-container" style="display:none;">
+                <h3><span id="game-form-title">Crear Nuevo Juego</span></h3>
+                <form id="game-form">
+                    <input type="hidden" id="game-id">
+                    <label for="game-title">Título del Juego:</label>
+                    <input type="text" id="game-title" required>
+
+                    <label for="game-description">Descripción:</label>
+                    <textarea id="game-description" rows="3"></textarea>
+
+                    <label for="game-mechanics">Mecánica:</label>
+                    <textarea id="game-mechanics" rows="3"></textarea>
+
+                    <label for="game-narrative">Narrativa Inicial:</label>
+                    <textarea id="game-narrative" rows="3"></textarea>
+
+                    <label for="game-order">Orden de Pruebas:</label>
+                    <select id="game-order">
+                        <option value="linear">Lineal</option>
+                        <option value="selectable">Seleccionable por Jugador</option>
+                    </select>
+
+                    <label for="game-active">Juego Activo:</label>
+                    <input type="checkbox" id="game-active">
+
+                    <button type="submit">Guardar Juego</button>
+                    <button type="button" class="cancel-button">Cancelar</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="locations-management" class="tab-content">
+            <h2>Gestionar Localizaciones</h2>
+            <select id="select-game-for-locations">
+                <option value="">Selecciona un Juego</option>
+                </select>
+            <button id="new-location-btn" class="add-button" style="display:none;">Añadir Nueva Localización</button>
+            <div id="location-list">
+                <p>Selecciona un juego para ver sus localizaciones.</p>
+            </div>
+
+            <div id="location-form-container" class="form-container" style="display:none;">
+                <h3><span id="location-form-title">Añadir Nueva Localización</span></h3>
+                <form id="location-form">
+                    <input type="hidden" id="location-id">
+                    <input type="hidden" id="location-game-id">
+
+                    <label for="location-narrative">Narrativa de Localización:</label>
+                    <textarea id="location-narrative" rows="3" required></textarea>
+
+                    <label for="location-image-url">URL de Imagen (Opcional):</label>
+                    <input type="url" id="location-image-url">
+
+                    <label for="location-audio-url">URL de Audio (Opcional):</label>
+                    <input type="url" id="location-audio-url">
+
+                    <label for="location-latitude">Latitud (GPS):</label>
+                    <input type="number" step="any" id="location-latitude" required>
+
+                    <label for="location-longitude">Longitud (GPS):</label>
+                    <input type="number" step="any" id="location-longitude" required>
+
+                    <label for="location-radius">Radio de Tolerancia (metros):</label>
+                    <input type="number" id="location-radius" value="10" required>
+
+                    <button type="submit">Guardar Localización</button>
+                    <button type="button" class="cancel-button">Cancelar</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="trials-management" class="tab-content">
+            <h2>Gestionar Pruebas</h2>
+            <select id="select-game-for-trials">
+                <option value="">Selecciona un Juego</option>
+                </select>
+            <select id="select-location-for-trials" disabled>
+                <option value="">Selecciona una Localización</option>
+                </select>
+            <button id="new-trial-btn" class="add-button" style="display:none;">Añadir Nueva Prueba</button>
+            <div id="trial-list">
+                <p>Selecciona un juego y una localización para ver sus pruebas.</p>
+            </div>
+
+            <div id="trial-form-container" class="form-container" style="display:none;">
+                <h3><span id="trial-form-title">Añadir Nueva Prueba</span></h3>
+                <form id="trial-form">
+                    <input type="hidden" id="trial-id">
+                    <input type="hidden" id="trial-location-id">
+
+                    <label for="trial-type">Tipo de Prueba:</label>
+                    <select id="trial-type" required>
+                        <option value="">Selecciona un tipo</option>
+                        <option value="qr">QR</option>
+                        <option value="gps">GPS</option>
+                        <option value="text">Texto</option>
+                    </select>
+
+                    <label for="trial-narrative">Narrativa de la Prueba:</label>
+                    <textarea id="trial-narrative" rows="3" required></textarea>
+
+                    <label for="trial-image-url">URL de Imagen (Opcional):</label>
+                    <input type="url" id="trial-image-url">
+
+                    <label for="trial-audio-url">URL de Audio (Opcional):</label>
+                    <input type="url" id="trial-audio-url">
+
+                    <div class="trial-type-fields" id="qr-fields" style="display:none;">
+                        <label for="qr-content">Contenido del QR (Texto exacto):</label>
+                        <input type="text" id="qr-content">
+                    </div>
+
+                    <div class="trial-type-fields" id="gps-fields" style="display:none;">
+                        <label for="gps-latitude">Latitud del Punto GPS:</label>
+                        <input type="number" step="any" id="gps-latitude">
+                        <label for="gps-longitude">Longitud del Punto GPS:</label>
+                        <input type="number" step="any" id="gps-longitude">
+                        <label for="gps-radius">Radio de Tolerancia GPS (metros):</label>
+                        <input type="number" id="gps-radius" value="5">
+                    </div>
+
+                    <div class="trial-type-fields" id="text-fields" style="display:none;">
+                        <label for="text-question">Pregunta:</label>
+                        <textarea id="text-question" rows="2"></textarea>
+                        <label for="text-answer-type">Tipo de Respuesta:</label>
+                        <select id="text-answer-type">
+                            <option value="single">Única (texto)</option>
+                            <option value="numeric">Numérica</option>
+                            </select>
+                        <label for="text-correct-answer">Respuesta Correcta:</label>
+                        <input type="text" id="text-correct-answer">
+                    </div>
+
+                    <label for="hint-count">Cantidad de Pistas:</label>
+                    <input type="number" id="hint-count" value="0" min="0">
+                    <label for="hint-cost">Coste de Pista (puntos):</label>
+                    <input type="number" id="hint-cost" value="10" min="0">
+
+                    <button type="submit">Guardar Prueba</button>
+                    <button type="button" class="cancel-button">Cancelar</button>
+                </form>
+            </div>
+        </section>
+
+        <section id="rankings-view" class="tab-content">
+            <h2>Rankings de Juegos Completados</h2>
+            <select id="select-game-for-rankings">
+                <option value="">Selecciona un Juego</option>
+                </select>
+            <div id="ranking-list">
+                <p>Selecciona un juego para ver su ranking.</p>
+                </div>
+        </section>
+
+        <div id="confirm-overlay" class="overlay" style="display: none;">
+            <div class="confirm-box">
+                <p>¿Estás seguro de que quieres eliminar esto?</p>
+                <button id="confirm-delete-btn">Sí, eliminar</button>
+                <button id="cancel-delete-btn">No, cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin-supabase-config.js"></script>
+    <script src="admin-script.js"></script>
+</body>
+</html>
