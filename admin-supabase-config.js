@@ -6,7 +6,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Función de utilidad para mostrar alertas (copia de shared/utils.js para evitar complejidad de módulos)
+// Función de utilidad para mostrar alertas (copia de utils.js para evitar complejidad de módulos)
 // Idealmente, se importaría desde shared/utils.js si se usan módulos ES6.
 function showAlert(message, type = 'info') {
     let alertDiv = document.getElementById('app-alert');
