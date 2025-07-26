@@ -1,13 +1,26 @@
-// admin-supabase-config.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+// admin/supabase-config.js
+// Configuración de Supabase (Admin)
+// *** REEMPLAZA CON TUS PROPIAS CREDENCIALES DE SUPABASE ***
+const SUPABASE_URL = 'https://keunztapjynaavjjdmlb.supabase.co'; 
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldW56dGFwanluYWF2ampkbWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDQ2MTksImV4cCI6MjA2OTAyMDYxOX0.woiFMVYYtalXgYp6uTrflE4dg-1XCjS8bRfqMOf5eoY'; 
 
-// ¡IMPORTANTE! Reemplaza con tus propias credenciales de Supabase
-const supabaseUrl = 'https://keunztapjynaavjjdmlb.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldW56dGFwanluYWF2ampkbWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDQ2MTksImV4cCI6MjA2OTAyMDYxOX0.woiFMVYYtalXgYp6uTrflE4dg-1XCjS8bRfqMOf5eoY';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Función de utilidad para mostrar alertas (copia de shared/utils.js para evitar complejidad de módulos)
+// Idealmente, se importaría desde shared/utils.js si se usan módulos ES6.
+function showAlert(message, type = 'info') {
+    let alertDiv = document.getElementById('app-alert');
+    if (!alertDiv) {
+        alertDiv = document.createElement('div');
+        alertDiv.id = 'app-alert';
+        document.body.appendChild(alertDiv);
+    }
 
-// Puedes añadir una función simple de autenticación si el admin necesita login
-// Por ahora, se asume que la Anon Key es suficiente para las operaciones de admin
-// o que la autenticación se maneja fuera de esta aplicación.
-// Si necesitas autenticación real de admin, házmelo saber.
+    alertDiv.textContent = message;
+    alertDiv.className = `app-alert ${type}`; // Clase base y tipo (info, success, warning, error)
+    alertDiv.style.display = 'block';
+
+    setTimeout(() => {
+        alertDiv.style.display = 'none';
+    }, 3000); // Ocultar después de 3 segundos
+}
