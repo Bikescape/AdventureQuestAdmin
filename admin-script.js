@@ -1,8 +1,16 @@
 // admin-script.js
 
-// Inicializa Supabase (asegúrate de que admin-supabase-config.js esté cargado y configure `supabase` globalmente)
-// const { createClient } = supabase; // Si no está globalmente
-// const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY); // Si no está globalmente
+// Estado global del Admin
+let current_game_id = null;
+let current_game_name = null;
+let current_game_adventure_type = null;
+let current_location_id = null;
+let current_location_name = null;
+let current_location_is_selectable_trials = null;
+
+// Variables para el mapa de ubicaciones
+let locationMap = null;
+let locationMapMarker = null;
 
 // Elementos del DOM para la navegación y formularios
 const gameListSection = document.getElementById('game-list-section');
@@ -17,12 +25,14 @@ const rankingsSummary = document.getElementById('rankings-summary');
 const createGameBtn = document.getElementById('create-game-btn');
 const cancelGameBtn = document.getElementById('cancel-game-btn');
 const backToGamesBtn = document.getElementById('back-to-games-btn');
+const previewGameBtn = document.getElementById('preview-game-btn'); // Nueva referencia
+
 const addLocationBtn = document.getElementById('add-location-btn');
 const cancelLocationBtn = document.getElementById('cancel-location-btn');
 const backToLocationsBtn = document.getElementById('back-to-locations-btn');
+
 const addTrialBtn = document.getElementById('add-trial-btn');
 const cancelTrialBtn = document.getElementById('cancel-trial-btn');
-const previewGameBtn = document.getElementById('preview-game-btn');
 
 // Formularios
 const gameForm = document.getElementById('game-form');
@@ -48,6 +58,12 @@ const locationInitialNarrativeInput = document.getElementById('location-initial-
 const locationImageUrlInput = document.getElementById('location-image-url');
 const locationAudioUrlInput = document.getElementById('location-audio-url');
 const locationIsSelectableTrialsInput = document.getElementById('location-is-selectable-trials');
+// Nuevos inputs para ubicación GPS
+const locationLatitudeInput = document.getElementById('location-latitude');
+const locationLongitudeInput = document.getElementById('location-longitude');
+const locationToleranceInput = document.getElementById('location-tolerance');
+const getCurrentLocationBtn = document.getElementById('get-current-location-btn');
+
 
 // Inputs de los formularios (Trial)
 const trialIdInput = document.getElementById('trial-id');
@@ -89,14 +105,6 @@ const currentGameNameSpan = document.getElementById('current-game-name');
 const currentLocationNameSpan = document.getElementById('current-location-name');
 const trialFormTitle = document.getElementById('trial-form-title');
 
-// Variables de estado
-let current_game_id = null;
-let current_game_name = null;
-let current_game_adventure_type = null;
-let current_location_id = null;
-let current_location_name = null;
-let current_location_is_selectable_trials = null;
-
 // --- Funciones de navegación y UI ---
 
 function showSection(sectionToShow) {
@@ -108,6 +116,18 @@ function showSection(sectionToShow) {
             section.classList.add('hidden');
         }
     });
+
+    // Lógica específica para inicializar el mapa cuando se muestra el formulario de ubicación
+    if (sectionToShow === locationFormSection) {
+        initLocationMap();
+    } else {
+        // Destruir el mapa si no se va a usar para liberar recursos
+        if (locationMap) {
+            locationMap.remove();
+            locationMap = null;
+            locationMapMarker = null;
+        }
+    }
 }
 
 function showTrialSpecificFields() {
@@ -147,6 +167,15 @@ function resetForm(form) {
     } else if (form === locationForm) {
         locationOrderIndexInput.value = 1;
         locationIsSelectableTrialsInput.checked = false;
+        locationToleranceInput.value = 10;
+        // Reiniciar el mapa si existe
+        if (locationMapMarker) {
+            locationMap.removeLayer(locationMapMarker);
+            locationMapMarker = null;
+        }
+        locationLatitudeInput.value = '';
+        locationLongitudeInput.value = '';
+
     } else if (form === trialForm) {
         trialTypeInput.value = ''; // Resetear el tipo de prueba
         trialHintCountInput.value = 3;
@@ -154,6 +183,63 @@ function resetForm(form) {
         trialOrderIndexInput.value = 1;
         textAnswerTypeInput.value = 'single_choice'; // Resetear tipo de respuesta de texto
         showTrialSpecificFields(); // Ocultar todos los campos específicos de prueba al resetear
+    }
+}
+
+
+// --- Lógica del Mapa Leaflet para Ubicaciones ---
+
+function initLocationMap(lat = 43.535, lon = -5.661, zoom = 13) { // Coordenadas por defecto (Gijón)
+    if (locationMap) {
+        locationMap.remove(); // Asegura que no se inicialice dos veces
+    }
+    locationMap = L.map('location-map').setView([lat, lon], zoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(locationMap);
+
+    // Permitir clic para establecer el marcador
+    locationMap.on('click', function(e) {
+        updateMapMarker(e.latlng.lat, e.latlng.lng);
+        locationLatitudeInput.value = e.latlng.lat.toFixed(6);
+        locationLongitudeInput.value = e.latlng.lng.toFixed(6);
+    });
+
+    // Si ya hay coordenadas, poner el marcador
+    if (locationLatitudeInput.value && locationLongitudeInput.value) {
+        updateMapMarker(parseFloat(locationLatitudeInput.value), parseFloat(locationLongitudeInput.value));
+    }
+}
+
+function updateMapMarker(lat, lon) {
+    if (locationMapMarker) {
+        locationMapMarker.setLatLng([lat, lon]);
+    } else {
+        locationMapMarker = L.marker([lat, lon]).addTo(locationMap);
+    }
+    locationMap.setView([lat, lon], locationMap.getZoom());
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        showAlert('Obteniendo tu ubicación actual...', 'info');
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                locationLatitudeInput.value = lat.toFixed(6);
+                locationLongitudeInput.value = lon.toFixed(6);
+                updateMapMarker(lat, lon);
+                showAlert('Ubicación obtenida.', 'success');
+            },
+            (error) => {
+                console.error("Error al obtener la ubicación:", error);
+                showAlert('Error al obtener la ubicación: ' + error.message, 'error');
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    } else {
+        showAlert('Geolocalización no soportada por este navegador.', 'warning');
     }
 }
 
@@ -171,6 +257,7 @@ async function fetchGames() {
 
     if (error) {
         console.error('Error fetching games:', error);
+        showAlert('Error al cargar los juegos: ' + error.message, 'error');
         gameListDiv.innerHTML = '<p>Error al cargar los juegos.</p>';
         return;
     }
@@ -229,6 +316,7 @@ async function fetchRankings() {
 
     if (error) {
         console.error('Error fetching rankings:', error);
+        showAlert('Error al cargar rankings: ' + error.message, 'error');
         rankingsContainer.innerHTML = '<p>Error al cargar los rankings.</p>';
         return;
     }
@@ -288,9 +376,9 @@ async function saveGame() {
 
     if (error) {
         console.error('Error saving game:', error);
-        alert('Error al guardar el juego.');
+        showAlert('Error al guardar el juego: ' + error.message, 'error');
     } else {
-        alert('Juego guardado correctamente.');
+        showAlert('Juego guardado correctamente.', 'success');
         resetForm(gameForm);
         showSection(gameListSection);
         fetchGames();
@@ -306,7 +394,7 @@ async function editGame(gameId) {
 
     if (error) {
         console.error('Error fetching game for edit:', error);
-        alert('Error al cargar el juego para editar.');
+        showAlert('Error al cargar el juego para editar: ' + error.message, 'error');
         return;
     }
 
@@ -336,9 +424,9 @@ async function deleteGame(gameId) {
 
     if (error) {
         console.error('Error deleting game:', error);
-        alert('Error al eliminar el juego.');
+        showAlert('Error al eliminar el juego: ' + error.message, 'error');
     } else {
-        alert('Juego eliminado correctamente.');
+        showAlert('Juego eliminado correctamente.', 'success');
         fetchGames();
     }
 }
@@ -362,6 +450,7 @@ async function viewLocations(gameId, gameName, adventureType) {
 
     if (error) {
         console.error('Error fetching locations:', error);
+        showAlert('Error al cargar las ubicaciones: ' + error.message, 'error');
         locationListDiv.innerHTML = '<p>Error al cargar las ubicaciones.</p>';
         return;
     }
@@ -373,11 +462,16 @@ async function viewLocations(gameId, gameName, adventureType) {
         locations.forEach(location => {
             const locationItem = document.createElement('div');
             locationItem.classList.add('location-item');
+            const coordsText = location.latitude && location.longitude ?
+                `Lat: ${location.latitude.toFixed(4)}, Lon: ${location.longitude.toFixed(4)}` :
+                'Sin coordenadas';
             locationItem.innerHTML = `
                 <div class="item-content">
                     <h3>${location.name}</h3>
                     <p>Orden: ${location.order_index || 'N/A'}</p>
                     <p>Pruebas seleccionables: ${location.is_selectable_trials ? 'Sí' : 'No'}</p>
+                    <p>Coordenadas: ${coordsText}</p>
+                    <p>Tolerancia: ${location.tolerance_meters || 'N/A'}m</p>
                 </div>
                 <div class="item-actions">
                     <button class="edit-button" data-id="${location.id}">Editar</button>
@@ -409,6 +503,19 @@ async function saveLocation() {
     const image_url = locationImageUrlInput.value;
     const audio_url = locationAudioUrlInput.value;
     const is_selectable_trials = locationIsSelectableTrialsInput.checked;
+    const latitude = parseFloat(locationLatitudeInput.value);
+    const longitude = parseFloat(locationLongitudeInput.value);
+    const tolerance_meters = parseInt(locationToleranceInput.value);
+
+    // Validación básica de coordenadas
+    if (isNaN(latitude) || isNaN(longitude)) {
+        showAlert('Latitud y Longitud son obligatorias y deben ser números.', 'error');
+        return;
+    }
+    if (isNaN(tolerance_meters) || tolerance_meters < 0) {
+        showAlert('La tolerancia debe ser un número positivo.', 'error');
+        return;
+    }
 
     const locationData = {
         game_id,
@@ -417,7 +524,10 @@ async function saveLocation() {
         initial_narrative,
         image_url,
         audio_url,
-        is_selectable_trials
+        is_selectable_trials,
+        latitude,
+        longitude,
+        tolerance_meters
     };
 
     let error = null;
@@ -437,9 +547,9 @@ async function saveLocation() {
 
     if (error) {
         console.error('Error saving location:', error);
-        alert('Error al guardar la ubicación.');
+        showAlert('Error al guardar la ubicación: ' + error.message, 'error');
     } else {
-        alert('Ubicación guardada correctamente.');
+        showAlert('Ubicación guardada correctamente.', 'success');
         resetForm(locationForm);
         showSection(locationListSection);
         viewLocations(current_game_id, current_game_name, current_game_adventure_type);
@@ -455,7 +565,7 @@ async function editLocation(locationId) {
 
     if (error) {
         console.error('Error fetching location for edit:', error);
-        alert('Error al cargar la ubicación para editar.');
+        showAlert('Error al cargar la ubicación para editar: ' + error.message, 'error');
         return;
     }
 
@@ -466,9 +576,26 @@ async function editLocation(locationId) {
     locationImageUrlInput.value = location.image_url;
     locationAudioUrlInput.value = location.audio_url;
     locationIsSelectableTrialsInput.checked = location.is_selectable_trials;
+    locationLatitudeInput.value = location.latitude || '';
+    locationLongitudeInput.value = location.longitude || '';
+    locationToleranceInput.value = location.tolerance_meters || 10;
+
 
     document.getElementById('location-form-title').textContent = 'Editar Ubicación';
-    showSection(locationFormSection);
+    showSection(locationFormSection); // Esto inicializará o actualizará el mapa
+    
+    // Si hay coordenadas, centrar el mapa en ellas
+    if (location.latitude && location.longitude) {
+        updateMapMarker(location.latitude, location.longitude);
+        locationMap.setView([location.latitude, location.longitude], 16); // Zoom más cercano al editar
+    } else {
+        // Si no hay coordenadas, centrar en Gijón por defecto o limpiar marcador
+        if (locationMapMarker) {
+            locationMap.removeLayer(locationMapMarker);
+            locationMapMarker = null;
+        }
+        locationMap.setView([43.535, -5.661], 13);
+    }
 }
 
 async function deleteLocation(locationId) {
@@ -483,9 +610,9 @@ async function deleteLocation(locationId) {
 
     if (error) {
         console.error('Error deleting location:', error);
-        alert('Error al eliminar la ubicación.');
+        showAlert('Error al eliminar la ubicación: ' + error.message, 'error');
     } else {
-        alert('Ubicación eliminada correctamente.');
+        showAlert('Ubicación eliminada correctamente.', 'success');
         viewLocations(current_game_id, current_game_name, current_game_adventure_type);
     }
 }
@@ -509,6 +636,7 @@ async function viewTrials(locationId, locationName, isSelectableTrials) {
 
     if (error) {
         console.error('Error fetching trials:', error);
+        showAlert('Error al cargar las pruebas: ' + error.message, 'error');
         trialListDiv.innerHTML = '<p>Error al cargar las pruebas.</p>';
         return;
     }
@@ -576,21 +704,44 @@ async function saveTrial() {
     // Agregar campos específicos según el tipo de prueba
     if (trial_type === 'qr') {
         trialData.qr_content = qrContentInput.value;
+        if (!trialData.qr_content) {
+            showAlert('El contenido del QR es obligatorio para pruebas QR.', 'error');
+            return;
+        }
     } else if (trial_type === 'gps') {
         trialData.latitude = parseFloat(gpsLatitudeInput.value);
         trialData.longitude = parseFloat(gpsLongitudeInput.value);
         trialData.tolerance_meters = parseInt(gpsToleranceInput.value);
+        if (isNaN(trialData.latitude) || isNaN(trialData.longitude) || isNaN(trialData.tolerance_meters)) {
+            showAlert('Latitud, Longitud y Tolerancia son obligatorios y deben ser números para pruebas GPS.', 'error');
+            return;
+        }
     } else if (trial_type === 'text') {
         trialData.question = textQuestionInput.value;
         trialData.answer_type = textAnswerTypeInput.value;
+        if (!trialData.question) {
+            showAlert('La pregunta es obligatoria para pruebas de Texto.', 'error');
+            return;
+        }
 
         if (trialData.answer_type === 'single_choice' || trialData.answer_type === 'numeric') {
             trialData.correct_answer = textCorrectAnswerSingleNumericInput.value;
+            if (!trialData.correct_answer) {
+                showAlert('La respuesta correcta es obligatoria para este tipo de prueba de Texto.', 'error');
+                return;
+            }
         } else if (trialData.answer_type === 'multiple_options' || trialData.answer_type === 'ordering') {
             trialData.correct_answer = textCorrectAnswerMultiOrderingInput.value;
             // Guardar opciones como un array JSON
             trialData.options = textOptionsInput.value.split(';').map(item => item.trim()).filter(item => item !== '');
+            if (!trialData.correct_answer || trialData.options.length === 0) {
+                showAlert('Opciones y respuesta correcta son obligatorias para este tipo de prueba de Texto.', 'error');
+                return;
+            }
         }
+    } else {
+        showAlert('Por favor, selecciona un tipo de prueba.', 'error');
+        return;
     }
 
     let error = null;
@@ -610,9 +761,9 @@ async function saveTrial() {
 
     if (error) {
         console.error('Error saving trial:', error);
-        alert('Error al guardar la prueba.');
+        showAlert('Error al guardar la prueba: ' + error.message, 'error');
     } else {
-        alert('Prueba guardada correctamente.');
+        showAlert('Prueba guardada correctamente.', 'success');
         resetForm(trialForm);
         showSection(trialListSection);
         viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
@@ -628,7 +779,7 @@ async function editTrial(trialId) {
 
     if (error) {
         console.error('Error fetching trial for edit:', error);
-        alert('Error al cargar la prueba para editar.');
+        showAlert('Error al cargar la prueba para editar: ' + error.message, 'error');
         return;
     }
 
@@ -678,9 +829,9 @@ async function deleteTrial(trialId) {
 
     if (error) {
         console.error('Error deleting trial:', error);
-        alert('Error al eliminar la prueba.');
+        showAlert('Error al eliminar la prueba: ' + error.message, 'error');
     } else {
-        alert('Prueba eliminada correctamente.');
+        showAlert('Prueba eliminada correctamente.', 'success');
         viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
     }
 }
@@ -708,9 +859,9 @@ backToGamesBtn.addEventListener('click', () => {
 });
 previewGameBtn.addEventListener('click', () => {
     if (current_game_id) {
-        alert(`Funcionalidad de previsualización para el juego: ${current_game_name} (ID: ${current_game_id})\n\nEsta característica está pendiente de implementación. Aquí se renderizaría el juego tal como lo verían los jugadores.`);
+        showAlert(`Funcionalidad de previsualización para el juego: ${current_game_name} (ID: ${current_game_id})\n\nEsta característica está pendiente de implementación. Aquí se renderizaría el juego tal como lo verían los jugadores.`, 'info');
     } else {
-        alert('Por favor, selecciona o crea un juego para previsualizar.');
+        showAlert('Por favor, selecciona o crea un juego para previsualizar.', 'warning');
     }
 });
 
@@ -747,6 +898,10 @@ backToLocationsBtn.addEventListener('click', () => {
     viewLocations(current_game_id, current_game_name, current_game_adventure_type);
 });
 
+// Botón para obtener ubicación actual en formulario de Location
+getCurrentLocationBtn.addEventListener('click', getCurrentLocation);
+
+
 // Botones de navegación de Pruebas
 addTrialBtn.addEventListener('click', () => {
     resetForm(trialForm);
@@ -762,6 +917,7 @@ cancelTrialBtn.addEventListener('click', () => {
 // Lógica de visibilidad de campos de prueba
 trialTypeInput.addEventListener('change', showTrialSpecificFields);
 textAnswerTypeInput.addEventListener('change', showTrialSpecificFields);
+
 
 // Cargar juegos al iniciar
 document.addEventListener('DOMContentLoaded', fetchGames);
