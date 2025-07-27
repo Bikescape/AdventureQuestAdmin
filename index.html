@@ -88,20 +88,6 @@
                 <label for="location-order-index">Orden (solo si el juego es lineal):</label>
                 <input type="number" id="location-order-index" min="1" value="1">
 
-                <label for="location-initial-narrative">Narrativa al LLegar a la Ubicación (Se muestra al llegar a la ubicación):</label>
-                <textarea id="location-initial-narrative"></textarea>
-                <p class="help-text">Describe el entorno o la narrativa al llegar el jugador a esta ubicación (antes de ver las pruebas).</p>
-
-                <label for="location-image-url">URL de Imagen (para la ubicación - opcional):</label>
-                <input type="url" id="location-image-url" placeholder="https://ejemplo.com/imagen_ubicacion.jpg">
-
-                <label for="location-audio-url">URL de Audio (para la ubicación - opcional):</label>
-                <input type="url" id="location-audio-url" placeholder="https://ejemplo.com/audio_ubicacion.mp3">
-
-                <label for="location-is-selectable-trials">Pruebas Seleccionables en esta Ubicación (el jugador elige el orden):</label>
-                <input type="checkbox" id="location-is-selectable-trials">
-                <p class="help-text">Si está activado, el jugador verá un listado de pruebas y podrá elegir cuál hacer. Si no, se harán en el orden definido.</p>
-
                 <fieldset class="fieldset-map">
                     <legend>Coordenadas de la Ubicación</legend>
                     <label for="location-latitude">Latitud:</label>
@@ -116,6 +102,25 @@
                     <button type="button" id="get-current-location-btn" class="secondary-action-button">Obtener Ubicación Actual</button>
                     <p class="help-text">Haz clic en el mapa para establecer el punto de la ubicación o usa tu ubicación actual.</p>
                 </fieldset>
+
+                <label for="pre-arrival-narrative">Narrativa PRE-LLEGADA (Se muestra ANTES de que el jugador alcance la ubicación):</label>
+                <textarea id="pre-arrival-narrative"></textarea>
+                <p class="help-text">Describe el contexto que lleva al jugador a esta ubicación, un desafío previo, o el inicio del camino hacia ella.</p>
+
+
+                <label for="location-initial-narrative">Narrativa de INTRODUCCIÓN de Pruebas (Se muestra al LLEGAR a la ubicación):</label>
+                <textarea id="location-initial-narrative"></textarea>
+                <p class="help-text">Describe el entorno o la narrativa al llegar el jugador a esta ubicación (justo antes de ver las pruebas).</p>
+
+                <label for="location-image-url">URL de Imagen (para la ubicación - opcional):</label>
+                <input type="url" id="location-image-url" placeholder="https://ejemplo.com/imagen_ubicacion.jpg">
+
+                <label for="location-audio-url">URL de Audio (para la ubicación - opcional):</label>
+                <input type="url" id="location-audio-url" placeholder="https://ejemplo.com/audio_ubicacion.mp3">
+
+                <label for="location-is-selectable-trials">Pruebas Seleccionables en esta Ubicación (el jugador elige el orden):</label>
+                <input type="checkbox" id="location-is-selectable-trials">
+                <p class="help-text">Si está activado, el jugador verá un listado de pruebas y podrá elegir cuál hacer. Si no, se harán en el orden definido.</p>
 
                 <div class="form-actions">
                     <button type="submit" class="save-button">Guardar Ubicación</button>
@@ -163,11 +168,22 @@
                 <label for="trial-audio-url">URL de Audio (para la prueba - opcional):</label>
                 <input type="url" id="trial-audio-url" placeholder="https://ejemplo.com/audio_prueba.mp3">
 
-                <label for="trial-hint-count">Número de Pistas Disponibles:</label>
-                <input type="number" id="trial-hint-count" min="0" value="3" required>
+                <label for="trial-hint-count">Número de Pistas Disponibles (máx. 3):</label>
+                <input type="number" id="trial-hint-count" min="0" max="3" value="3" required>
 
                 <label for="trial-hint-cost">Coste de Cada Pista (puntos):</label>
                 <input type="number" id="trial-hint-cost" min="0" value="10" required>
+
+                <fieldset class="trial-specific-fields">
+                    <legend>Configuración de Pistas</legend>
+                    <label for="hint1">Pista 1 (Opcional):</label>
+                    <textarea id="hint1"></textarea>
+                    <label for="hint2">Pista 2 (Opcional):</label>
+                    <textarea id="hint2"></textarea>
+                    <label for="hint3">Pista 3 (Opcional):</label>
+                    <textarea id="hint3"></textarea>
+                    <p class="help-text">El jugador podrá pedir estas pistas. El número de pistas activas se configura arriba.</p>
+                </fieldset>
 
                 <div id="qr-fields" class="hidden trial-specific-fields">
                     <h3>Configuración QR</h3>

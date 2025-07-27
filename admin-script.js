@@ -54,6 +54,7 @@ const locationIdInput = document.getElementById('location-id');
 const currentGameIdLocationInput = document.getElementById('current-game-id-location');
 const locationNameInput = document.getElementById('location-name');
 const locationOrderIndexInput = document.getElementById('location-order-index');
+const preArrivalNarrativeInput = document.getElementById('pre-arrival-narrative');
 const locationInitialNarrativeInput = document.getElementById('location-initial-narrative');
 const locationImageUrlInput = document.getElementById('location-image-url');
 const locationAudioUrlInput = document.getElementById('location-audio-url');
@@ -77,6 +78,9 @@ const trialHintCountInput = document.getElementById('trial-hint-count');
 const trialHintCostInput = document.getElementById('trial-hint-cost');
 
 // Campos específicos de prueba
+const hint1Input = document.getElementById('hint1'); // NUEVO
+const hint2Input = document.getElementById('hint2'); // NUEVO
+const hint3Input = document.getElementById('hint3'); // NUEVO
 const qrFields = document.getElementById('qr-fields');
 const qrContentInput = document.getElementById('qr-content');
 const gpsFields = document.getElementById('gps-fields');
@@ -168,6 +172,7 @@ function resetForm(form) {
         locationOrderIndexInput.value = 1;
         locationIsSelectableTrialsInput.checked = false;
         locationToleranceInput.value = 10;
+        preArrivalNarrativeInput.value = '';
         // Reiniciar el mapa si existe
         if (locationMapMarker) {
             locationMap.removeLayer(locationMapMarker);
@@ -181,6 +186,9 @@ function resetForm(form) {
         trialHintCountInput.value = 3;
         trialHintCostInput.value = 10;
         trialOrderIndexInput.value = 1;
+        hint1Input.value = ''; // NUEVO
+        hint2Input.value = ''; // NUEVO
+        hint3Input.value = ''; // NUEVO
         textAnswerTypeInput.value = 'single_choice'; // Resetear tipo de respuesta de texto
         showTrialSpecificFields(); // Ocultar todos los campos específicos de prueba al resetear
     }
@@ -499,6 +507,7 @@ async function saveLocation() {
     const game_id = current_game_id;
     const name = locationNameInput.value;
     const order_index = current_game_adventure_type === 'linear' ? parseInt(locationOrderIndexInput.value) : null;
+    const pre_arrival_narrative = preArrivalNarrativeInput.value;
     const initial_narrative = locationInitialNarrativeInput.value;
     const image_url = locationImageUrlInput.value;
     const audio_url = locationAudioUrlInput.value;
@@ -521,6 +530,7 @@ async function saveLocation() {
         game_id,
         name,
         order_index,
+        pre_arrival_narrative,
         initial_narrative,
         image_url,
         audio_url,
@@ -572,6 +582,7 @@ async function editLocation(locationId) {
     locationIdInput.value = location.id;
     locationNameInput.value = location.name;
     locationOrderIndexInput.value = location.order_index || '';
+    preArrivalNarrativeInput.value = location.pre_arrival_narrative || '';
     locationInitialNarrativeInput.value = location.initial_narrative;
     locationImageUrlInput.value = location.image_url;
     locationAudioUrlInput.value = location.audio_url;
@@ -681,6 +692,9 @@ async function saveTrial() {
     const audio_url = trialAudioUrlInput.value;
     const hint_count = parseInt(trialHintCountInput.value);
     const hint_cost = parseInt(trialHintCostInput.value);
+    const hint1 = hint1Input.value; // NUEVO
+    const hint2 = hint2Input.value; // NUEVO
+    const hint3 = hint3Input.value; // NUEVO
 
     let trialData = {
         location_id,
@@ -691,6 +705,9 @@ async function saveTrial() {
         audio_url,
         hint_count,
         hint_cost,
+        hint1, // NUEVO
+        hint2, // NUEVO
+        hint3, // NUEVO
         qr_content: null,
         latitude: null,
         longitude: null,
@@ -791,6 +808,10 @@ async function editTrial(trialId) {
     trialAudioUrlInput.value = trial.audio_url;
     trialHintCountInput.value = trial.hint_count;
     trialHintCostInput.value = trial.hint_cost;
+    hint1Input.value = trial.hint1 || ''; // NUEVO
+    hint2Input.value = trial.hint2 || ''; // NUEVO
+    hint3Input.value = trial.hint3 || ''; // NUEVO
+
 
     // Rellenar campos específicos
     if (trial.trial_type === 'qr') {
