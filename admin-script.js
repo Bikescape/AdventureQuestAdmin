@@ -716,23 +716,11 @@ async function saveTrial() {
         hint1,
         hint2,
         hint3
-        qr_content: null,
-        latitude: null,
-        longitude: null,
-        tolerance_meters: null,
-        question: null,
-        answer_type: null,
-        correct_answer: null,
-        options: null
     };
 
     // Campos específicos por tipo de prueba
     if (trial_type === 'qr') {
         trialData.qr_content = qrContentInput.value;
-        if (!trialData.qr_content) {
-            showAlert('El contenido del QR es obligatorio para pruebas QR.', 'error');
-            return;
-        }
     } else if (trial_type === 'gps') {
         trialData.latitude = parseFloat(gpsLatitudeInput.value);
         trialData.longitude = parseFloat(gpsLongitudeInput.value);
@@ -745,29 +733,12 @@ async function saveTrial() {
     } else if (trial_type === 'text') {
         trialData.question = textQuestionInput.value;
         trialData.answer_type = textAnswerTypeInput.value;
-        if (!trialData.question) {
-            showAlert('La pregunta es obligatoria para pruebas de Texto.', 'error');
-            return;
-        }
-
         if (trialData.answer_type === 'single_choice' || trialData.answer_type === 'numeric') {
             trialData.correct_answer = textCorrectAnswerSingleNumericInput.value;
-            if (!trialData.correct_answer) {
-                showAlert('La respuesta correcta es obligatoria para este tipo de prueba de Texto.', 'error');
-                return;
-            }
         } else if (trialData.answer_type === 'multiple_options' || trialData.answer_type === 'ordering') {
+            trialData.options = textOptionsInput.value.split('||').map(s => s.trim());
             trialData.correct_answer = textCorrectAnswerMultiOrderingInput.value;
-            // Guardar opciones como un array JSON
-            trialData.options = textOptionsInput.value.split(';').map(item => item.trim()).filter(item => item !== '');
-            if (!trialData.correct_answer || trialData.options.length === 0) {
-                showAlert('Opciones y respuesta correcta son obligatorias para este tipo de prueba de Texto.', 'error');
-                return;
-            }
         }
-    } else {
-        showAlert('Por favor, selecciona un tipo de prueba.', 'error');
-        return;
     }
 
     let error = null;
@@ -821,29 +792,28 @@ async function editTrial(trialId) {
     hint2Input.value = trial.hint2 || '';
     hint3Input.value = trial.hint3 || '';
 
-    // Rellenar campos específicos
+    // Campos específicos
     if (trial.trial_type === 'qr') {
-        qrContentInput.value = trial.qr_content || '';
+        qrContentInput.value = trial.qr_content;
     } else if (trial.trial_type === 'gps') {
-        gpsLatitudeInput.value = trial.latitude || '';
-        gpsLongitudeInput.value = trial.longitude || '';
-        gpsToleranceInput.value = trial.tolerance_meters || 10;
+        gpsLatitudeInput.value = trial.latitude;
+        gpsLongitudeInput.value = trial.longitude;
+        gpsToleranceInput.value = trial.tolerance_meters;
     } else if (trial.trial_type === 'text') {
-        textQuestionInput.value = trial.question || '';
-        textAnswerTypeInput.value = trial.answer_type || 'single_choice';
-
+        textQuestionInput.value = trial.question;
+        textAnswerTypeInput.value = trial.answer_type;
         if (trial.answer_type === 'single_choice' || trial.answer_type === 'numeric') {
-            textCorrectAnswerSingleNumericInput.value = trial.correct_answer || '';
+            textCorrectAnswerSingleNumericInput.value = trial.correct_answer;
         } else if (trial.answer_type === 'multiple_options' || trial.answer_type === 'ordering') {
-            textCorrectAnswerMultiOrderingInput.value = trial.correct_answer || '';
-            // Convertir array JSON a string separado por ;
-            textOptionsInput.value = (trial.options && Array.isArray(trial.options)) ? trial.options.join(';') : '';
+            textOptionsInput.value = (trial.options || []).join(' || ');
+            textCorrectAnswerMultiOrderingInput.value = trial.correct_answer;
         }
     }
 
+    showTrialSpecificFields(); // Asegura que los campos correctos estén visibles
+
     trialFormTitle.textContent = 'Editar Prueba';
     showSection(trialFormSection);
-    showTrialSpecificFields(); // Asegurar que los campos correctos se muestren después de cargar los datos
 }
 
 async function deleteTrial(trialId) {
