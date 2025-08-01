@@ -821,28 +821,29 @@ async function editTrial(trialId) {
     hint2Input.value = trial.hint2 || '';
     hint3Input.value = trial.hint3 || '';
 
-    // Campos específicos
+    // Rellenar campos específicos
     if (trial.trial_type === 'qr') {
-        qrContentInput.value = trial.qr_content;
+        qrContentInput.value = trial.qr_content || '';
     } else if (trial.trial_type === 'gps') {
-        gpsLatitudeInput.value = trial.latitude;
-        gpsLongitudeInput.value = trial.longitude;
-        gpsToleranceInput.value = trial.tolerance_meters;
+        gpsLatitudeInput.value = trial.latitude || '';
+        gpsLongitudeInput.value = trial.longitude || '';
+        gpsToleranceInput.value = trial.tolerance_meters || 10;
     } else if (trial.trial_type === 'text') {
-        textQuestionInput.value = trial.question;
-        textAnswerTypeInput.value = trial.answer_type;
+        textQuestionInput.value = trial.question || '';
+        textAnswerTypeInput.value = trial.answer_type || 'single_choice';
+
         if (trial.answer_type === 'single_choice' || trial.answer_type === 'numeric') {
-            textCorrectAnswerSingleNumericInput.value = trial.correct_answer;
+            textCorrectAnswerSingleNumericInput.value = trial.correct_answer || '';
         } else if (trial.answer_type === 'multiple_options' || trial.answer_type === 'ordering') {
-            textOptionsInput.value = (trial.options || []).join(' || ');
-            textCorrectAnswerMultiOrderingInput.value = trial.correct_answer;
+            textCorrectAnswerMultiOrderingInput.value = trial.correct_answer || '';
+            // Convertir array JSON a string separado por ;
+            textOptionsInput.value = (trial.options && Array.isArray(trial.options)) ? trial.options.join(';') : '';
         }
     }
 
-    showTrialSpecificFields(); // Asegura que los campos correctos estén visibles
-
     trialFormTitle.textContent = 'Editar Prueba';
     showSection(trialFormSection);
+    showTrialSpecificFields(); // Asegurar que los campos correctos se muestren después de cargar los datos
 }
 
 async function deleteTrial(trialId) {
