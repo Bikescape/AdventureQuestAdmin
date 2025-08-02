@@ -45,13 +45,12 @@
                 <label for="game-initial-narrative">Narrativa Inicial del Juego:</label>
                 <textarea id="game-initial-narrative"></textarea>
 
-                <label for="game-image-url">URL de Imagen del Juego (opcional):</label>
+                <label for="game-image-url">URL de Imagen (para el juego - opcional):</label>
                 <input type="url" id="game-image-url" placeholder="https://ejemplo.com/imagen_juego.jpg">
-                <p class="help-text">URL de una imagen que se mostrará al inicio del juego.</p>
 
-                <label for="game-audio-url">URL de Audio del Juego (opcional):</label>
+                <label for="game-audio-url">URL de Audio (para el juego - opcional):</label>
                 <input type="url" id="game-audio-url" placeholder="https://ejemplo.com/audio_juego.mp3">
-                <p class="help-text">URL de un archivo de audio que se reproducirá con la narrativa inicial.</p>
+
                 <label for="game-adventure-type">Tipo de Aventura:</label>
                 <select id="game-adventure-type">
                     <option value="linear">Lineal (Ubicaciones en orden)</option>
@@ -156,17 +155,18 @@
                 <label for="trial-type">Tipo de Prueba:</label>
                 <select id="trial-type" required>
                     <option value="">Selecciona un tipo</option>
-                    <option value="qr">Código QR</option>
-                    <option value="gps">GPS (Llegar a Coordenadas)</option>
-                    <option value="text">Pregunta de Texto</option>
+                    <option value="qr">QR</option>
+                    <option value="gps">GPS</option>
+                    <option value="text">Texto</option>
                 </select>
 
-                <label for="trial-order-index">Orden de la Prueba (solo si no son seleccionables en la ubicación):</label>
+                <label for="trial-order-index">Orden (solo si las pruebas son lineales en la ubicación):</label>
                 <input type="number" id="trial-order-index" min="1" value="1">
+                <p class="help-text">Si la ubicación tiene pruebas seleccionables, este campo se ignora.</p>
 
                 <label for="trial-narrative">Narrativa de la Prueba:</label>
-                <textarea id="trial-narrative" required></textarea>
-                <p class="help-text">Texto que el jugador leerá al iniciar esta prueba.</p>
+                <textarea id="trial-narrative"></textarea>
+                <p class="help-text">Descripción de la prueba, pistas de qué hacer o qué buscar para resolverla.</p>
 
                 <label for="trial-image-url">URL de Imagen (para la prueba - opcional):</label>
                 <input type="url" id="trial-image-url" placeholder="https://ejemplo.com/imagen_prueba.jpg">
@@ -174,68 +174,69 @@
                 <label for="trial-audio-url">URL de Audio (para la prueba - opcional):</label>
                 <input type="url" id="trial-audio-url" placeholder="https://ejemplo.com/audio_prueba.mp3">
 
-                <label for="trial-hint-count">Número de Pistas disponibles:</label>
-                <input type="number" id="trial-hint-count" min="0" value="3" required>
+                <label for="trial-hint-count">Número de Pistas Disponibles (máx. 3):</label>
+                <input type="number" id="trial-hint-count" min="0" max="3" value="3" required>
 
-                <label for="trial-hint-cost">Coste por Pista (puntos):</label>
+                <label for="trial-hint-cost">Coste de Cada Pista (puntos):</label>
                 <input type="number" id="trial-hint-cost" min="0" value="10" required>
 
-                <div class="hint-fields-container">
-                    <h3>Pistas</h3>
-                    <label for="hint1">Pista 1:</label>
-                    <textarea id="hint1" rows="2"></textarea>
-                    <label for="hint2">Pista 2:</label>
-                    <textarea id="hint2" rows="2"></textarea>
-                    <label for="hint3">Pista 3:</label>
-                    <textarea id="hint3" rows="2"></textarea>
+                <fieldset class="trial-specific-fields">
+                    <legend>Configuración de Pistas</legend>
+                    <label for="hint1">Pista 1 (Opcional):</label>
+                    <textarea id="hint1"></textarea>
+                    <label for="hint2">Pista 2 (Opcional):</label>
+                    <textarea id="hint2"></textarea>
+                    <label for="hint3">Pista 3 (Opcional):</label>
+                    <textarea id="hint3"></textarea>
+                    <p class="help-text">El jugador podrá pedir estas pistas. El número de pistas activas se configura arriba.</p>
+                </fieldset>
+
+                <div id="qr-fields" class="hidden trial-specific-fields">
+                    <h3>Configuración QR</h3>
+                    <label for="qr-content">Contenido esperado del QR (cadena de texto):</label>
+                    <input type="text" id="qr-content">
+                    <p class="help-text">El jugador deberá escanear un QR que contenga exactamente este texto.</p>
                 </div>
 
-                <fieldset id="qr-fields" class="hidden">
-                    <legend>Configuración QR</legend>
-                    <label for="qr-content">Contenido del QR esperado:</label>
-                    <input type="text" id="qr-content" placeholder="Ej: QR_DESAFIO_1" required>
-                    <p class="help-text">El texto exacto que debe contener el código QR.</p>
-                </fieldset>
+                <div id="gps-fields" class="hidden trial-specific-fields">
+                    <h3>Configuración GPS</h3>
+                    <label for="gps-latitude">Latitud:</label>
+                    <input type="number" id="gps-latitude" step="any">
+                    <label for="gps-longitude">Longitud:</label>
+                    <input type="number" id="gps-longitude" step="any">
+                    <label for="gps-tolerance">Tolerancia (metros):</label>
+                    <input type="number" id="gps-tolerance" min="0" value="10">
+                    <p class="help-text">El jugador debe estar dentro de este radio para validar la prueba.</p>
+                </div>
 
-                <fieldset id="gps-fields" class="hidden">
-                    <legend>Configuración GPS</legend>
-                    <label for="gps-latitude">Latitud del Objetivo:</label>
-                    <input type="number" id="gps-latitude" step="any" placeholder="Ej: 40.7128" required>
-                    <label for="gps-longitude">Longitud del Objetivo:</label>
-                    <input type="number" id="gps-longitude" step="any" placeholder="Ej: -74.0060" required>
-                    <label for="gps-tolerance">Radio de Tolerancia GPS (metros):</label>
-                    <input type="number" id="gps-tolerance" min="0" value="5" required>
-                    <p class="help-text">El radio de proximidad para que el GPS del jugador detecte la validación de esta prueba.</p>
-                </fieldset>
-
-                <fieldset id="text-fields" class="hidden">
-                    <legend>Configuración de Pregunta de Texto</legend>
+                <div id="text-fields" class="hidden trial-specific-fields">
+                    <h3>Configuración Texto</h3>
                     <label for="text-question">Pregunta:</label>
-                    <textarea id="text-question" required></textarea>
+                    <textarea id="text-question"></textarea>
 
                     <label for="text-answer-type">Tipo de Respuesta:</label>
                     <select id="text-answer-type">
-                        <option value="single_choice">Respuesta de Texto Libre</option>
-                        <option value="numeric">Respuesta Numérica</option>
-                        <option value="multiple_options">Múltiples Opciones</option>
-                        </select>
+                        <option value="single_choice">Respuesta Única</option>
+                        <option value="numeric">Numérica</option>
+                        <option value="multiple_options">Opciones Múltiples (Separar por ;)</option>
+                        <option value="ordering">Ordenación (Separar por ;)</option>
+                    </select>
 
-                    <div id="single-numeric-answer-fields">
+                    <div id="single-numeric-answer-fields" class="answer-type-fields">
                         <label for="text-correct-answer-single-numeric">Respuesta Correcta:</label>
-                        <input type="text" id="text-correct-answer-single-numeric" placeholder="Ej: Torre Eiffel o 123" required>
-                        <p class="help-text">Para texto libre, la respuesta exacta. Para números, el número exacto. (Insensible a mayúsculas/minúsculas para texto)</p>
+                        <input type="text" id="text-correct-answer-single-numeric">
+                        <p class="help-text">Para Numérica, solo números. Para Respuesta Única, el texto exacto.</p>
                     </div>
 
-                    <div id="multi-ordering-answer-fields" class="hidden">
-                        <label for="text-options">Opciones (separadas por ||, ej: Opción A || Opción B):</label>
-                        <textarea id="text-options" placeholder="Opción 1 || Opción 2 || Opción 3" rows="2"></textarea>
-                        <p class="help-text">Para "Múltiples Opciones", la respuesta correcta debe ser una de estas opciones.</p>
-
-                        <label for="text-correct-answer-multi-ordering">Respuesta Correcta:</label>
-                        <input type="text" id="text-correct-answer-multi-ordering" placeholder="Ej: Opción B o 1 || 2 || 3" required>
-                        <p class="help-text">Para "Múltiples Opciones", una de las opciones exactas. Para "Ordenación", el orden correcto de los IDs (ej: 1 || 3 || 2).</p>
+                    <div id="multi-ordering-answer-fields" class="hidden answer-type-fields">
+                        <label for="text-options">Opciones (separadas por punto y coma ';'):</label>
+                        <textarea id="text-options" placeholder="Opción A;Opción B;Opción B"></textarea>
+                        <p class="help-text">Las opciones que el jugador verá para elegir o para ordenar.</p>
+                        <label for="text-correct-answer-multi-ordering">Respuesta Correcta (ej: Opción1;Opción3;Opción2 para ordenación):</label>
+                        <input type="text" id="text-correct-answer-multi-ordering">
+                        <p class="help-text">Para Opciones Múltiples, la opción correcta. Para Ordenación, el orden correcto de las opciones (ej: A;C;B).</p>
                     </div>
-                </fieldset>
+                </div>
 
                 <div class="form-actions">
                     <button type="submit" class="save-button">Guardar Prueba</button>
@@ -246,13 +247,12 @@
     </main>
 
     <footer>
-        <p>&copy; 2024 Creador de Juegos de Escape</p>
+        <p>&copy; 2025 Generador de WebApp de Búsqueda del Tesoro</p>
     </footer>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="admin-supabase-config.js"></script>
     <script src="admin-script.js"></script>
-
 </body>
 </html>
