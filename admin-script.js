@@ -403,7 +403,8 @@ async function saveTrial(e) {
     e.preventDefault();
     const trialType = trialTypeInput.value;
     const question = document.getElementById('trial-question-input').value;
-    const correctAnswer = document.getElementById('correct-answer-input').value;
+    // La respuesta correcta para los campos de texto/numéricos se toma de aquí
+    let correctAnswer = document.getElementById('correct-answer-input').value;
     const imageHint = document.getElementById('image-hint-input').value;
 
     if (!question || !trialType) {
@@ -415,14 +416,16 @@ async function saveTrial(e) {
         type: trialType,
         question: question,
         imageHint: imageHint,
-        correctAnswer: correctAnswer,
         order: parseInt(document.getElementById('trial-order-input').value, 10) || 0,
-        nextLocationId: document.getElementById('next-location-id-input').value || null,
+        nextLocationId: null, // Se establece a null por defecto, y solo se usa para pruebas de respuesta única
         location_id: currentLocationId
     };
-
-    // Lógica para los campos específicos de caminos alternativos para múltiples opciones
-    if (trialType === 'multiple-choice' || trialType === 'ordering') {
+    
+    // Asignar los campos específicos según el tipo de prueba
+    if (trialType === 'text' || trialType === 'numeric') {
+        trialData.correctAnswer = correctAnswer;
+        trialData.nextLocationId = document.getElementById('next-location-id-input').value || null;
+    } else if (trialType === 'multiple-choice' || trialType === 'ordering') {
         const options = document.getElementById('text-options').value.split(';').map(opt => opt.trim());
         const correctOptions = document.getElementById('text-correct-answer-multi-ordering').value;
         const nextLocationPaths = {};
@@ -510,15 +513,16 @@ async function editTrial(trialId) {
     document.getElementById('trial-type-input').value = trial.type;
     document.getElementById('trial-question-input').value = trial.question;
     document.getElementById('image-hint-input').value = trial.imageHint;
-    document.getElementById('correct-answer-input').value = trial.correctAnswer;
+    document.getElementById('correct-answer-input').value = trial.correctAnswer || '';
     document.getElementById('trial-order-input').value = trial.order;
-    document.getElementById('next-location-id-input').value = trial.nextLocationId;
+    document.getElementById('next-location-id-input').value = trial.nextLocationId || '';
 
     // Llenar campos específicos de la prueba para las opciones y sus caminos
     if (trial.type === 'multiple-choice' || trial.type === 'ordering') {
         document.getElementById('text-options').value = trial.options?.join(';') || '';
         document.getElementById('text-correct-answer-multi-ordering').value = trial.correctOptions || '';
-        showTrialSpecificFields(); // Genera los campos de camino dinámicamente
+        // Esta llamada generará y rellenará los campos de caminos alternativos
+        showTrialSpecificFields(); 
         if (trial.nextLocationPaths) {
             Object.keys(trial.nextLocationPaths).forEach((option) => {
                 const pathInput = document.querySelector(`.option-path-field input[placeholder="ID de la próxima ubicación para '${option}'"]`);
@@ -694,6 +698,6 @@ function generateOptionPathFields() {
             optionsPathsDiv.appendChild(field);
         });
     } else {
-        optionsPathsDiv.innerHTML = '<p>Introduce opciones en el campo de texto de arriba para configurar los caminos.</p>';
+        optionsPathsDiv.innerHTML = '<p class="help-text">Introduce opciones en el campo de texto de arriba para configurar los caminos.</p>';
     }
 }
