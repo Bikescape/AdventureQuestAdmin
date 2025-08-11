@@ -51,21 +51,6 @@ const trialFormTitle = document.getElementById('trial-form-title');
 const gameNameHeader = document.getElementById('game-name-header');
 const locationNameHeader = document.getElementById('location-name-header');
 
-// ==========================================================================================================
-// AUTENTICACIÓN
-// ==========================================================================================================
-// Escuchar cambios en el estado de autenticación de Supabase
-supabase.auth.onAuthStateChange((event, session) => {
-    if (session) {
-        currentUserId = session.user.id;
-        console.log("Usuario autenticado con Supabase:", currentUserId);
-        loadGames();
-    } else {
-        currentUserId = null;
-        console.log("Usuario no autenticado.");
-        showAppAlert("No se ha podido autenticar. Inicia sesión.", "error");
-    }
-});
 
 // ==========================================================================================================
 // FUNCIONES DE UTILIDAD PARA LA UI
