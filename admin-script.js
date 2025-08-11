@@ -70,7 +70,6 @@ const getCurrentLocationBtn = document.getElementById('get-current-location-btn'
 // Inputs de los formularios (Trial)
 const trialIdInput = document.getElementById('trial-id');
 const currentLocationIdTrialInput = document.getElementById('current-location-id-trial');
-// MODIFICACIÓN: Añadir referencia al nuevo campo de título de la prueba
 const trialNameInput = document.getElementById('trial-name');
 const trialTypeInput = document.getElementById('trial-type');
 const trialOrderIndexInput = document.getElementById('trial-order-index');
@@ -98,6 +97,10 @@ const textCorrectAnswerSingleNumericInput = document.getElementById('text-correc
 const multiOrderingAnswerFields = document.getElementById('multi-ordering-answer-fields');
 const textOptionsInput = document.getElementById('text-options');
 const textCorrectAnswerMultiOrderingInput = document.getElementById('text-correct-answer-multi-ordering');
+// NUEVOS ELEMENTOS PARA CAMINOS ALTERNATIVOS
+const multipleOptionsPaths = document.getElementById('multiple-options-paths');
+const optionPathsContainer = document.getElementById('option-paths-container');
+
 
 // Contenedores de listas
 const gameListDiv = document.getElementById('game-list');
@@ -135,12 +138,23 @@ function showSection(sectionToShow) {
     }
 }
 
+function showAlert(message, type) {
+    const alertBox = document.getElementById('app-alert');
+    alertBox.textContent = message;
+    alertBox.className = `app-alert show ${type}`;
+    setTimeout(() => {
+        alertBox.classList.remove('show');
+    }, 5000);
+}
+
 function showTrialSpecificFields() {
     qrFields.classList.add('hidden');
     gpsFields.classList.add('hidden');
     textFields.classList.add('hidden');
     singleNumericAnswerFields.classList.add('hidden');
     multiOrderingAnswerFields.classList.add('hidden');
+    // NUEVO: Ocultar/mostrar campos de caminos alternativos
+    multipleOptionsPaths.classList.add('hidden');
 
     const trialType = trialTypeInput.value;
     const answerType = textAnswerTypeInput.value;
@@ -155,6 +169,12 @@ function showTrialSpecificFields() {
             singleNumericAnswerFields.classList.remove('hidden');
         } else if (answerType === 'multiple_options' || answerType === 'ordering') {
             multiOrderingAnswerFields.classList.remove('hidden');
+            // NUEVO: Mostrar campos de caminos alternativos solo para opciones múltiples
+            if (answerType === 'multiple_options') {
+                multipleOptionsPaths.classList.remove('hidden');
+                // Esto generará los campos dinámicamente si hay opciones
+                generateOptionPathFields(textOptionsInput.value);
+            }
         }
     }
 }
@@ -182,7 +202,6 @@ function resetForm(form) {
         locationLongitudeInput.value = '';
 
     } else if (form === trialForm) {
-        // MODIFICACIÓN: Limpiar el campo de título de la prueba al resetear
         trialNameInput.value = '';
         trialTypeInput.value = '';
         trialHintCountInput.value = 3;
@@ -192,6 +211,8 @@ function resetForm(form) {
         hint2Input.value = '';
         hint3Input.value = '';
         textAnswerTypeInput.value = 'single_choice';
+        // NUEVO: Limpiar los campos de caminos alternativos al resetear
+        optionPathsContainer.innerHTML = '';
         showTrialSpecificFields();
     }
 }
@@ -251,13 +272,11 @@ function getCurrentLocation() {
     }
 }
 
-
 // --- Lógica de Supabase y CRUD ---
 
 async function fetchGames() {
     gameListDiv.innerHTML = '<p>Cargando juegos...</p>';
     rankingsSummary.classList.add('hidden');
-
     const { data: games, error } = await supabase
         .from('games')
         .select('*')
@@ -281,165 +300,87 @@ async function fetchGames() {
                 <div class="item-content">
                     <h3>${game.title}</h3>
                     <p>Estado: ${game.is_active ? 'Activo ✅' : 'Inactivo ❌'}</p>
-                    <p>Tipo de Aventura: ${game.adventure_type === 'linear' ? 'Lineal' : 'Seleccionable'}</p>
-                    <p>Puntuación Inicial por Prueba: ${game.initial_score_per_trial}</p>
+                    <p>Tipo: ${game.adventure_type === 'linear' ? 'Lineal' : 'Seleccionable'}</p>
                 </div>
                 <div class="item-actions">
+                    <button class="view-button" data-id="${game.id}" data-name="${game.title}" data-type="${game.adventure_type}">Ver Ubicaciones</button>
                     <button class="edit-button" data-id="${game.id}">Editar</button>
-                    <button class="view-button" data-id="${game.id}" data-name="${game.title}" data-adventure-type="${game.adventure_type}">Ver Ubicaciones</button>
                     <button class="delete-button" data-id="${game.id}">Eliminar</button>
                 </div>
             `;
             gameListDiv.appendChild(gameItem);
         });
-
-        gameListDiv.querySelectorAll('.edit-button').forEach(button => {
-            button.addEventListener('click', (e) => editGame(e.target.dataset.id));
-        });
-        gameListDiv.querySelectorAll('.view-button').forEach(button => {
-            button.addEventListener('click', (e) => viewLocations(e.target.dataset.id, e.target.dataset.name, e.target.dataset.adventureType));
-        });
-        gameListDiv.querySelectorAll('.delete-button').forEach(button => {
-            button.addEventListener('click', (e) => deleteGame(e.target.dataset.id));
-        });
-    }
-    fetchRankings();
-}
-
-async function fetchRankings() {
-    rankingsContainer.innerHTML = '<p>Cargando rankings...</p>';
-    rankingsSummary.classList.remove('hidden');
-
-    const { data: teams, error } = await supabase
-        .from('teams')
-        .select(`
-            *,
-            games(title)
-        `)
-        .eq('is_completed', true)
-        .order('total_score', { ascending: false })
-        .order('total_time_seconds', { ascending: true });
-
-    if (error) {
-        console.error('Error fetching rankings:', error);
-        showAlert('Error al cargar rankings: ' + error.message, 'error');
-        rankingsContainer.innerHTML = '<p>Error al cargar los rankings.</p>';
-        return;
-    }
-
-    if (teams.length === 0) {
-        rankingsContainer.innerHTML = '<p>Ningún equipo ha completado un juego aún.</p>';
-    } else {
-        rankingsContainer.innerHTML = '';
-        teams.forEach((team, index) => {
-            const rankingItem = document.createElement('div');
-            rankingItem.classList.add('ranking-item');
-            const totalMinutes = Math.floor(team.total_time_seconds / 60);
-            const remainingSeconds = team.total_time_seconds % 60;
-            rankingItem.innerHTML = `
-                <div class="team-info">#${index + 1} ${team.name} (${team.games.title})</div>
-                <div class="score-time">Puntuación: ${team.total_score} | Tiempo: ${totalMinutes}m ${remainingSeconds}s</div>
-            `;
-            rankingsContainer.appendChild(rankingItem);
-        });
     }
 }
 
 async function saveGame() {
-    const id = gameIdInput.value || null;
-    const title = gameTitleInput.value;
-    const description = gameDescriptionInput.value;
-    const mechanics = gameMechanicsInput.value;
-    const initial_narrative = gameInitialNarrativeInput.value;
-    const image_url = gameImageUrlInput.value;
-    const audio_url = gameAudioUrlInput.value;
-    const adventure_type = gameAdventureTypeInput.value;
-    const initial_score_per_trial = parseInt(gameInitialScorePerTrialInput.value);
-    const is_active = gameIsActiveInput.checked;
-
+    const gameId = gameIdInput.value;
     const gameData = {
-        title,
-        description,
-        mechanics,
-        initial_narrative,
-        image_url,
-        audio_url,
-        adventure_type,
-        initial_score_per_trial,
-        is_active
+        title: gameTitleInput.value,
+        description: gameDescriptionInput.value,
+        mechanics: gameMechanicsInput.value,
+        initial_narrative: gameInitialNarrativeInput.value,
+        image_url: gameImageUrlInput.value,
+        audio_url: gameAudioUrlInput.value,
+        adventure_type: gameAdventureTypeInput.value,
+        initial_score_per_trial: gameInitialScorePerTrialInput.value,
+        is_active: gameIsActiveInput.checked
     };
 
-    let error = null;
-
-    if (id) {
-        const { error: updateError } = await supabase
-            .from('games')
-            .update(gameData)
-            .eq('id', id);
-        error = updateError;
+    if (gameId) {
+        const { error } = await supabase.from('games').update(gameData).eq('id', gameId);
+        if (error) {
+            console.error('Error updating game:', error);
+            showAlert('Error al actualizar el juego: ' + error.message, 'error');
+        } else {
+            showAlert('Juego actualizado con éxito.', 'success');
+            showSection(gameListSection);
+            fetchGames();
+        }
     } else {
-        const { error: insertError } = await supabase
-            .from('games')
-            .insert([gameData]);
-        error = insertError;
-    }
-
-    if (error) {
-        console.error('Error saving game:', error);
-        showAlert('Error al guardar el juego: ' + error.message, 'error');
-    } else {
-        showAlert('Juego guardado correctamente.', 'success');
-        resetForm(gameForm);
-        showSection(gameListSection);
-        fetchGames();
+        const { error } = await supabase.from('games').insert(gameData);
+        if (error) {
+            console.error('Error creating game:', error);
+            showAlert('Error al crear el juego: ' + error.message, 'error');
+        } else {
+            showAlert('Juego creado con éxito.', 'success');
+            showSection(gameListSection);
+            fetchGames();
+        }
     }
 }
 
-async function editGame(gameId) {
-    const { data: game, error } = await supabase
-        .from('games')
-        .select('*')
-        .eq('id', gameId)
-        .single();
-
+async function editGame(id) {
+    const { data, error } = await supabase.from('games').select('*').eq('id', id).single();
     if (error) {
         console.error('Error fetching game for edit:', error);
-        showAlert('Error al cargar el juego para editar: ' + error.message, 'error');
+        showAlert('Error al cargar el juego: ' + error.message, 'error');
         return;
     }
-
-    gameIdInput.value = game.id;
-    gameTitleInput.value = game.title;
-    gameDescriptionInput.value = game.description;
-    gameMechanicsInput.value = game.mechanics;
-    gameInitialNarrativeInput.value = game.initial_narrative;
-    gameImageUrlInput.value = game.image_url || '';
-    gameAudioUrlInput.value = game.audio_url || '';
-    gameAdventureTypeInput.value = game.adventure_type;
-    gameInitialScorePerTrialInput.value = game.initial_score_per_trial;
-    gameIsActiveInput.checked = game.is_active;
-
-    formTitle.textContent = 'Editar Juego';
-    gameNameDisplay.textContent = `: ${game.title}`;
+    gameIdInput.value = data.id;
+    gameTitleInput.value = data.title;
+    gameDescriptionInput.value = data.description;
+    gameMechanicsInput.value = data.mechanics;
+    gameInitialNarrativeInput.value = data.initial_narrative;
+    gameImageUrlInput.value = data.image_url;
+    gameAudioUrlInput.value = data.audio_url;
+    gameAdventureTypeInput.value = data.adventure_type;
+    gameInitialScorePerTrialInput.value = data.initial_score_per_trial;
+    gameIsActiveInput.checked = data.is_active;
+    document.getElementById('form-title').textContent = 'Editar Juego';
     showSection(gameFormSection);
 }
 
-async function deleteGame(gameId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar este juego? Se eliminarán también todas sus ubicaciones y pruebas.')) {
-        return;
-    }
-
-    const { error } = await supabase
-        .from('games')
-        .delete()
-        .eq('id', gameId);
-
-    if (error) {
-        console.error('Error deleting game:', error);
-        showAlert('Error al eliminar el juego: ' + error.message, 'error');
-    } else {
-        showAlert('Juego eliminado correctamente.', 'success');
-        fetchGames();
+async function deleteGame(id) {
+    if (confirm('¿Estás seguro de que quieres eliminar este juego? También se eliminarán todas sus ubicaciones y pruebas.')) {
+        const { error } = await supabase.from('games').delete().eq('id', id);
+        if (error) {
+            console.error('Error deleting game:', error);
+            showAlert('Error al eliminar el juego: ' + error.message, 'error');
+        } else {
+            showAlert('Juego eliminado con éxito.', 'success');
+            fetchGames();
+        }
     }
 }
 
@@ -449,16 +390,16 @@ async function viewLocations(gameId, gameName, adventureType) {
     current_game_adventure_type = adventureType;
     currentGameIdLocationInput.value = gameId;
     currentGameNameSpan.textContent = gameName;
-
-    locationListDiv.innerHTML = '<p>Cargando ubicaciones...</p>';
+    gameNameDisplay.textContent = ' - ' + gameName;
+    document.getElementById('current-game-name-location').textContent = ' - ' + gameName;
     showSection(locationListSection);
 
+    locationListDiv.innerHTML = '<p>Cargando ubicaciones...</p>';
     const { data: locations, error } = await supabase
         .from('locations')
         .select('*')
         .eq('game_id', gameId)
-        .order('order_index', { ascending: true })
-        .order('created_at', { ascending: true });
+        .order('order_index', { ascending: true });
 
     if (error) {
         console.error('Error fetching locations:', error);
@@ -468,183 +409,116 @@ async function viewLocations(gameId, gameName, adventureType) {
     }
 
     if (locations.length === 0) {
-        locationListDiv.innerHTML = '<p>No hay ubicaciones creadas para este juego.</p>';
+        locationListDiv.innerHTML = '<p>No hay ubicaciones creadas aún. ¡Añade la primera!</p>';
     } else {
         locationListDiv.innerHTML = '';
         locations.forEach(location => {
             const locationItem = document.createElement('div');
             locationItem.classList.add('location-item');
-            const coordsText = location.latitude && location.longitude ?
-                `Lat: ${location.latitude.toFixed(4)}, Lon: ${location.longitude.toFixed(4)}` :
-                'Sin coordenadas';
             locationItem.innerHTML = `
                 <div class="item-content">
-                    <h3>${location.name}</h3>
-                    <p>Orden: ${location.order_index || 'N/A'}</p>
-                    <p>Pruebas seleccionables: ${location.is_selectable_trials ? 'Sí' : 'No'}</p>
-                    <p>Coordenadas: ${coordsText}</p>
-                    <p>Tolerancia: ${location.tolerance_meters || 'N/A'}m</p>
+                    <h3>${location.name} (${location.order_index})</h3>
+                    <p>Lat: ${location.latitude}, Lon: ${location.longitude}</p>
                 </div>
                 <div class="item-actions">
+                    <button class="view-button" data-id="${location.id}" data-name="${location.name}" data-is-selectable="${location.is_selectable_trials}">Ver Pruebas</button>
                     <button class="edit-button" data-id="${location.id}">Editar</button>
-                    <button class="view-button" data-id="${location.id}" data-name="${location.name}" data-is-selectable-trials="${location.is_selectable_trials}">Ver Pruebas</button>
                     <button class="delete-button" data-id="${location.id}">Eliminar</button>
                 </div>
             `;
             locationListDiv.appendChild(locationItem);
         });
-
-        locationListDiv.querySelectorAll('.edit-button').forEach(button => {
-            button.addEventListener('click', (e) => editLocation(e.target.dataset.id));
-        });
-        locationListDiv.querySelectorAll('.view-button').forEach(button => {
-            button.addEventListener('click', (e) => viewTrials(e.target.dataset.id, e.target.dataset.name, e.target.dataset.isSelectableTrials === 'true'));
-        });
-        locationListDiv.querySelectorAll('.delete-button').forEach(button => {
-            button.addEventListener('click', (e) => deleteLocation(e.target.dataset.id));
-        });
     }
 }
 
 async function saveLocation() {
-    const id = locationIdInput.value || null;
-    const game_id = current_game_id;
-    const name = locationNameInput.value;
-    const order_index = current_game_adventure_type === 'linear' ? parseInt(locationOrderIndexInput.value) : null;
-    const pre_arrival_narrative = preArrivalNarrativeInput.value;
-    const initial_narrative = locationInitialNarrativeInput.value;
-    const image_url = locationImageUrlInput.value;
-    const audio_url = locationAudioUrlInput.value;
-    const is_selectable_trials = locationIsSelectableTrialsInput.checked;
-    const latitude = parseFloat(locationLatitudeInput.value);
-    const longitude = parseFloat(locationLongitudeInput.value);
-    const tolerance_meters = parseInt(locationToleranceInput.value);
-
-    if (isNaN(latitude) || isNaN(longitude)) {
-        showAlert('Latitud y Longitud son obligatorias y deben ser números.', 'error');
-        return;
-    }
-    if (isNaN(tolerance_meters) || tolerance_meters < 0) {
-        showAlert('La tolerancia debe ser un número positivo.', 'error');
-        return;
-    }
-
+    const locationId = locationIdInput.value;
     const locationData = {
-        game_id,
-        name,
-        order_index,
-        pre_arrival_narrative,
-        initial_narrative,
-        image_url,
-        audio_url,
-        is_selectable_trials,
-        latitude,
-        longitude,
-        tolerance_meters
+        game_id: currentGameIdLocationInput.value,
+        name: locationNameInput.value,
+        order_index: locationOrderIndexInput.value,
+        pre_arrival_narrative: preArrivalNarrativeInput.value,
+        initial_narrative: locationInitialNarrativeInput.value,
+        image_url: locationImageUrlInput.value,
+        audio_url: locationAudioUrlInput.value,
+        is_selectable_trials: locationIsSelectableTrialsInput.checked,
+        latitude: locationLatitudeInput.value,
+        longitude: locationLongitudeInput.value,
+        tolerance: locationToleranceInput.value
     };
 
-    let error = null;
-
-    if (id) {
-        const { error: updateError } = await supabase
-            .from('locations')
-            .update(locationData)
-            .eq('id', id);
-        error = updateError;
+    if (locationId) {
+        const { error } = await supabase.from('locations').update(locationData).eq('id', locationId);
+        if (error) {
+            console.error('Error updating location:', error);
+            showAlert('Error al actualizar la ubicación: ' + error.message, 'error');
+        } else {
+            showAlert('Ubicación actualizada con éxito.', 'success');
+            viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+        }
     } else {
-        const { error: insertError } = await supabase
-            .from('locations')
-            .insert([locationData]);
-        error = insertError;
-    }
-
-    if (error) {
-        console.error('Error saving location:', error);
-        showAlert('Error al guardar la ubicación: ' + error.message, 'error');
-    } else {
-        showAlert('Ubicación guardada correctamente.', 'success');
-        resetForm(locationForm);
-        showSection(locationListSection);
-        viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+        const { error } = await supabase.from('locations').insert(locationData);
+        if (error) {
+            console.error('Error creating location:', error);
+            showAlert('Error al crear la ubicación: ' + error.message, 'error');
+        } else {
+            showAlert('Ubicación creada con éxito.', 'success');
+            viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+        }
     }
 }
 
-async function editLocation(locationId) {
-    const { data: location, error } = await supabase
-        .from('locations')
-        .select('*')
-        .eq('id', locationId)
-        .single();
-
+async function editLocation(id) {
+    const { data, error } = await supabase.from('locations').select('*').eq('id', id).single();
     if (error) {
         console.error('Error fetching location for edit:', error);
-        showAlert('Error al cargar la ubicación para editar: ' + error.message, 'error');
+        showAlert('Error al cargar la ubicación: ' + error.message, 'error');
         return;
     }
-
-    locationIdInput.value = location.id;
-    locationNameInput.value = location.name;
-    locationOrderIndexInput.value = location.order_index || '';
-    preArrivalNarrativeInput.value = location.pre_arrival_narrative || '';
-    locationInitialNarrativeInput.value = location.initial_narrative;
-    locationImageUrlInput.value = location.image_url;
-    locationAudioUrlInput.value = location.audio_url;
-    locationIsSelectableTrialsInput.checked = location.is_selectable_trials;
-    locationLatitudeInput.value = location.latitude || '';
-    locationLongitudeInput.value = location.longitude || '';
-    locationToleranceInput.value = location.tolerance_meters || 10;
-
+    locationIdInput.value = data.id;
+    locationNameInput.value = data.name;
+    locationOrderIndexInput.value = data.order_index;
+    preArrivalNarrativeInput.value = data.pre_arrival_narrative;
+    locationInitialNarrativeInput.value = data.initial_narrative;
+    locationImageUrlInput.value = data.image_url;
+    locationAudioUrlInput.value = data.audio_url;
+    locationIsSelectableTrialsInput.checked = data.is_selectable_trials;
+    locationLatitudeInput.value = data.latitude;
+    locationLongitudeInput.value = data.longitude;
+    locationToleranceInput.value = data.tolerance;
 
     document.getElementById('location-form-title').textContent = 'Editar Ubicación';
     showSection(locationFormSection);
-    
-    if (location.latitude && location.longitude) {
-        updateMapMarker(location.latitude, location.longitude);
-        locationMap.setView([location.latitude, location.longitude], 16);
-    } else {
-        if (locationMapMarker) {
-            locationMap.removeLayer(locationMapMarker);
-            locationMapMarker = null;
+    initLocationMap(data.latitude, data.longitude);
+}
+
+async function deleteLocation(id) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta ubicación? También se eliminarán todas sus pruebas.')) {
+        const { error } = await supabase.from('locations').delete().eq('id', id);
+        if (error) {
+            console.error('Error deleting location:', error);
+            showAlert('Error al eliminar la ubicación: ' + error.message, 'error');
+        } else {
+            showAlert('Ubicación eliminada con éxito.', 'success');
+            viewLocations(current_game_id, current_game_name, current_game_adventure_type);
         }
-        locationMap.setView([43.535, -5.661], 13);
     }
 }
 
-async function deleteLocation(locationId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta ubicación? Se eliminarán también todas sus pruebas.')) {
-        return;
-    }
-
-    const { error } = await supabase
-        .from('locations')
-        .delete()
-        .eq('id', locationId);
-
-    if (error) {
-        console.error('Error deleting location:', error);
-        showAlert('Error al eliminar la ubicación: ' + error.message, 'error');
-    } else {
-        showAlert('Ubicación eliminada correctamente.', 'success');
-        viewLocations(current_game_id, current_game_name, current_game_adventure_type);
-    }
-}
-
-async function viewTrials(locationId, locationName, isSelectableTrials) {
+async function viewTrials(locationId, locationName, isSelectable) {
     current_location_id = locationId;
     current_location_name = locationName;
-    current_location_is_selectable_trials = isSelectableTrials;
+    current_location_is_selectable_trials = isSelectable;
     currentLocationIdTrialInput.value = locationId;
     currentLocationNameSpan.textContent = locationName;
-
-    trialListDiv.innerHTML = '<p>Cargando pruebas...</p>';
     showSection(trialListSection);
 
+    trialListDiv.innerHTML = '<p>Cargando pruebas...</p>';
     const { data: trials, error } = await supabase
         .from('trials')
         .select('*')
         .eq('location_id', locationId)
-        .order('order_index', { ascending: true })
-        .order('created_at', { ascending: true });
+        .order('order_index', { ascending: true });
 
     if (error) {
         console.error('Error fetching trials:', error);
@@ -654,18 +528,16 @@ async function viewTrials(locationId, locationName, isSelectableTrials) {
     }
 
     if (trials.length === 0) {
-        trialListDiv.innerHTML = '<p>No hay pruebas creadas para esta ubicación.</p>';
+        trialListDiv.innerHTML = '<p>No hay pruebas creadas aún. ¡Añade la primera!</p>';
     } else {
         trialListDiv.innerHTML = '';
         trials.forEach(trial => {
             const trialItem = document.createElement('div');
             trialItem.classList.add('trial-item');
-            // MODIFICACIÓN: Mostrar el nuevo campo 'name' como título principal.
             trialItem.innerHTML = `
                 <div class="item-content">
-                    <h3>${trial.name || 'Prueba sin título'} (${trial.trial_type.toUpperCase()})</h3>
-                    <p>Orden: ${trial.order_index || 'N/A'}</p>
-                    <p>Pistas: ${trial.hint_count} (Coste: ${trial.hint_cost} puntos)</p>
+                    <h3>${trial.name} (${trial.order_index})</h3>
+                    <p>Tipo: ${trial.type}</p>
                 </div>
                 <div class="item-actions">
                     <button class="edit-button" data-id="${trial.id}">Editar</button>
@@ -674,274 +546,376 @@ async function viewTrials(locationId, locationName, isSelectableTrials) {
             `;
             trialListDiv.appendChild(trialItem);
         });
-
-        trialListDiv.querySelectorAll('.edit-button').forEach(button => {
-            button.addEventListener('click', (e) => editTrial(e.target.dataset.id));
-        });
-        trialListDiv.querySelectorAll('.delete-button').forEach(button => {
-            button.addEventListener('click', (e) => deleteTrial(e.target.dataset.id));
-        });
     }
+}
+
+async function fetchTrialsForSelect() {
+    const { data: trials, error } = await supabase
+        .from('trials')
+        .select('id, name, order_index, location_id')
+        .eq('location_id', current_location_id)
+        .order('order_index', { ascending: true });
+
+    if (error) {
+        console.error('Error fetching trials for select:', error);
+        return [];
+    }
+    return trials;
+}
+
+async function generateOptionPathFields(optionsText, savedPaths = {}) {
+    optionPathsContainer.innerHTML = '';
+    if (!optionsText) return;
+    
+    const options = optionsText.split(';').map(o => o.trim()).filter(o => o);
+    const trialsInLocation = await fetchTrialsForSelect();
+
+    options.forEach((option, index) => {
+        const div = document.createElement('div');
+        div.classList.add('option-path-field');
+
+        const label = document.createElement('label');
+        label.textContent = `Siguiente prueba para la opción "${option}":`;
+        
+        const select = document.createElement('select');
+        select.id = `option-path-${index}`;
+        select.name = `option-path-${index}`;
+        select.classList.add('path-select');
+
+        // Opción por defecto
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = 'Ninguna (la respuesta es incorrecta)';
+        select.appendChild(defaultOption);
+
+        trialsInLocation.forEach(trial => {
+            // No permitir que una prueba apunte a sí misma
+            if (trial.id !== trialIdInput.value) {
+                const optionElement = document.createElement('option');
+                optionElement.value = trial.id;
+                optionElement.textContent = `[${trial.order_index}] ${trial.name}`;
+                if (savedPaths && savedPaths[option] === trial.id) {
+                    optionElement.selected = true;
+                }
+                select.appendChild(optionElement);
+            }
+        });
+        
+        div.appendChild(label);
+        div.appendChild(select);
+        optionPathsContainer.appendChild(div);
+    });
 }
 
 async function saveTrial() {
-    const id = trialIdInput.value || null;
-    const location_id = current_location_id;
-    // MODIFICACIÓN: Leer el valor del nuevo campo de título.
-    const name = trialNameInput.value;
-    const trial_type = trialTypeInput.value;
-    const order_index = current_location_is_selectable_trials ? null : parseInt(trialOrderIndexInput.value);
-    const narrative = trialNarrativeInput.value;
-    const image_url = trialImageUrlInput.value;
-    const audio_url = trialAudioUrlInput.value;
-    const hint_count = parseInt(trialHintCountInput.value);
-    const hint_cost = parseInt(trialHintCostInput.value);
-    const hint1 = hint1Input.value;
-    const hint2 = hint2Input.value;
-    const hint3 = hint3Input.value;
+    const trialId = trialIdInput.value;
+    const trialType = trialTypeInput.value;
+    const textAnswerType = textAnswerTypeInput.value;
 
-    // MODIFICACIÓN: Añadir validación para el nuevo campo de título.
-    if (!name) {
-        showAlert('El título de la prueba es obligatorio.', 'error');
-        return;
+    let specificData = {};
+    if (trialType === 'qr') {
+        specificData = {
+            qr_content: qrContentInput.value
+        };
+    } else if (trialType === 'gps') {
+        specificData = {
+            gps_latitude: gpsLatitudeInput.value,
+            gps_longitude: gpsLongitudeInput.value,
+            gps_tolerance: gpsToleranceInput.value
+        };
+    } else if (trialType === 'text') {
+        specificData = {
+            text_question: textQuestionInput.value,
+            text_answer_type: textAnswerType
+        };
+        if (textAnswerType === 'single_choice' || textAnswerType === 'numeric') {
+            specificData.text_correct_answer = textCorrectAnswerSingleNumericInput.value;
+        } else if (textAnswerType === 'multiple_options') {
+            specificData.text_options = textOptionsInput.value;
+            // NUEVO: Recoger los caminos alternativos
+            const options = textOptionsInput.value.split(';').map(o => o.trim()).filter(o => o);
+            const nextTrialPaths = {};
+            options.forEach((option, index) => {
+                const selectElement = document.getElementById(`option-path-${index}`);
+                if (selectElement && selectElement.value) {
+                    nextTrialPaths[option] = selectElement.value;
+                }
+            });
+            specificData.next_trial_paths = JSON.stringify(nextTrialPaths);
+        } else if (textAnswerType === 'ordering') {
+            specificData.text_options = textOptionsInput.value;
+            specificData.text_correct_answer = textCorrectAnswerMultiOrderingInput.value;
+        }
     }
 
-    let trialData = {
-        // MODIFICACIÓN: Incluir el nuevo campo 'name' en los datos a guardar.
-        name,
-        location_id,
-        trial_type,
-        order_index,
-        narrative,
-        image_url,
-        audio_url,
-        hint_count,
-        hint_cost,
-        hint1,
-        hint2,
-        hint3,
-        qr_content: null,
-        latitude: null,
-        longitude: null,
-        tolerance_meters: null,
-        question: null,
-        answer_type: null,
-        correct_answer: null,
-        options: null
+    const trialData = {
+        location_id: currentLocationIdTrialInput.value,
+        name: trialNameInput.value,
+        type: trialType,
+        order_index: trialOrderIndexInput.value,
+        narrative: trialNarrativeInput.value,
+        image_url: trialImageUrlInput.value,
+        audio_url: trialAudioUrlInput.value,
+        hint_count: trialHintCountInput.value,
+        hint_cost: trialHintCostInput.value,
+        hint1: hint1Input.value,
+        hint2: hint2Input.value,
+        hint3: hint3Input.value,
+        ...specificData
     };
 
-    if (trial_type === 'qr') {
-        trialData.qr_content = qrContentInput.value;
-        if (!trialData.qr_content) {
-            showAlert('El contenido del QR es obligatorio para pruebas QR.', 'error');
-            return;
-        }
-    } else if (trial_type === 'gps') {
-        trialData.latitude = parseFloat(gpsLatitudeInput.value);
-        trialData.longitude = parseFloat(gpsLongitudeInput.value);
-        trialData.tolerance_meters = parseInt(gpsToleranceInput.value);
-        if (isNaN(trialData.latitude) || isNaN(trialData.longitude) || isNaN(trialData.tolerance_meters)) {
-            showAlert('Latitud, Longitud y Tolerancia son obligatorios y deben ser números para pruebas GPS.', 'error');
-            return;
-        }
-    } else if (trial_type === 'text') {
-        trialData.question = textQuestionInput.value;
-        trialData.answer_type = textAnswerTypeInput.value;
-        if (!trialData.question) {
-            showAlert('La pregunta es obligatoria para pruebas de Texto.', 'error');
-            return;
-        }
-
-        if (trialData.answer_type === 'single_choice' || trialData.answer_type === 'numeric') {
-            trialData.correct_answer = textCorrectAnswerSingleNumericInput.value;
-            if (!trialData.correct_answer) {
-                showAlert('La respuesta correcta es obligatoria para este tipo de prueba de Texto.', 'error');
-                return;
-            }
-        } else if (trialData.answer_type === 'multiple_options' || trialData.answer_type === 'ordering') {
-            trialData.correct_answer = textCorrectAnswerMultiOrderingInput.value;
-            trialData.options = textOptionsInput.value.split(';').map(item => item.trim()).filter(item => item !== '');
-            if (!trialData.correct_answer || trialData.options.length === 0) {
-                showAlert('Opciones y respuesta correcta son obligatorias para este tipo de prueba de Texto.', 'error');
-                return;
-            }
+    if (trialId) {
+        const { error } = await supabase.from('trials').update(trialData).eq('id', trialId);
+        if (error) {
+            console.error('Error updating trial:', error);
+            showAlert('Error al actualizar la prueba: ' + error.message, 'error');
+        } else {
+            showAlert('Prueba actualizada con éxito.', 'success');
+            viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
         }
     } else {
-        showAlert('Por favor, selecciona un tipo de prueba.', 'error');
-        return;
-    }
-
-    let error = null;
-
-    if (id) {
-        const { error: updateError } = await supabase
-            .from('trials')
-            .update(trialData)
-            .eq('id', id);
-        error = updateError;
-    } else {
-        const { error: insertError } = await supabase
-            .from('trials')
-            .insert([trialData]);
-        error = insertError;
-    }
-
-    if (error) {
-        console.error('Error saving trial:', error);
-        showAlert('Error al guardar la prueba: ' + error.message, 'error');
-    } else {
-        showAlert('Prueba guardada correctamente.', 'success');
-        resetForm(trialForm);
-        showSection(trialListSection);
-        viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
+        const { error } = await supabase.from('trials').insert(trialData);
+        if (error) {
+            console.error('Error creating trial:', error);
+            showAlert('Error al crear la prueba: ' + error.message, 'error');
+        } else {
+            showAlert('Prueba creada con éxito.', 'success');
+            viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
+        }
     }
 }
 
-async function editTrial(trialId) {
-    const { data: trial, error } = await supabase
-        .from('trials')
-        .select('*')
-        .eq('id', trialId)
-        .single();
-
+async function editTrial(id) {
+    const { data, error } = await supabase.from('trials').select('*').eq('id', id).single();
     if (error) {
         console.error('Error fetching trial for edit:', error);
-        showAlert('Error al cargar la prueba para editar: ' + error.message, 'error');
+        showAlert('Error al cargar la prueba: ' + error.message, 'error');
         return;
     }
+    trialIdInput.value = data.id;
+    trialNameInput.value = data.name;
+    trialTypeInput.value = data.type;
+    trialOrderIndexInput.value = data.order_index;
+    trialNarrativeInput.value = data.narrative;
+    trialImageUrlInput.value = data.image_url;
+    trialAudioUrlInput.value = data.audio_url;
+    trialHintCountInput.value = data.hint_count;
+    trialHintCostInput.value = data.hint_cost;
+    hint1Input.value = data.hint1;
+    hint2Input.value = data.hint2;
+    hint3Input.value = data.hint3;
 
-    trialIdInput.value = trial.id;
-    // MODIFICACIÓN: Rellenar el campo de título al editar una prueba.
-    trialNameInput.value = trial.name || '';
-    trialTypeInput.value = trial.trial_type;
-    trialOrderIndexInput.value = trial.order_index || '';
-    trialNarrativeInput.value = trial.narrative;
-    trialImageUrlInput.value = trial.image_url;
-    trialAudioUrlInput.value = trial.audio_url;
-    trialHintCountInput.value = trial.hint_count;
-    trialHintCostInput.value = trial.hint_cost;
-    hint1Input.value = trial.hint1 || '';
-    hint2Input.value = trial.hint2 || '';
-    hint3Input.value = trial.hint3 || '';
-
-
-    if (trial.trial_type === 'qr') {
-        qrContentInput.value = trial.qr_content || '';
-    } else if (trial.trial_type === 'gps') {
-        gpsLatitudeInput.value = trial.latitude || '';
-        gpsLongitudeInput.value = trial.longitude || '';
-        gpsToleranceInput.value = trial.tolerance_meters || 10;
-    } else if (trial.trial_type === 'text') {
-        textQuestionInput.value = trial.question || '';
-        textAnswerTypeInput.value = trial.answer_type || 'single_choice';
-
-        if (trial.answer_type === 'single_choice' || trial.answer_type === 'numeric') {
-            textCorrectAnswerSingleNumericInput.value = trial.correct_answer || '';
-        } else if (trial.answer_type === 'multiple_options' || trial.answer_type === 'ordering') {
-            textCorrectAnswerMultiOrderingInput.value = trial.correct_answer || '';
-            textOptionsInput.value = (trial.options && Array.isArray(trial.options)) ? trial.options.join(';') : '';
+    if (data.type === 'qr') {
+        qrContentInput.value = data.qr_content;
+    } else if (data.type === 'gps') {
+        gpsLatitudeInput.value = data.gps_latitude;
+        gpsLongitudeInput.value = data.gps_longitude;
+        gpsToleranceInput.value = data.gps_tolerance;
+    } else if (data.type === 'text') {
+        textQuestionInput.value = data.text_question;
+        textAnswerTypeInput.value = data.text_answer_type;
+        if (data.text_answer_type === 'single_choice' || data.text_answer_type === 'numeric') {
+            textCorrectAnswerSingleNumericInput.value = data.text_correct_answer;
+        } else if (data.text_answer_type === 'multiple_options' || data.text_answer_type === 'ordering') {
+            textOptionsInput.value = data.text_options;
+            textCorrectAnswerMultiOrderingInput.value = data.text_correct_answer;
+            // NUEVO: Cargar los caminos alternativos si existen
+            if (data.text_answer_type === 'multiple_options' && data.next_trial_paths) {
+                const savedPaths = JSON.parse(data.next_trial_paths);
+                generateOptionPathFields(data.text_options, savedPaths);
+            }
         }
     }
 
     trialFormTitle.textContent = 'Editar Prueba';
-    showSection(trialFormSection);
     showTrialSpecificFields();
+    showSection(trialFormSection);
 }
 
-async function deleteTrial(trialId) {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta prueba?')) {
+async function deleteTrial(id) {
+    if (confirm('¿Estás seguro de que quieres eliminar esta prueba?')) {
+        const { error } = await supabase.from('trials').delete().eq('id', id);
+        if (error) {
+            console.error('Error deleting trial:', error);
+            showAlert('Error al eliminar la prueba: ' + error.message, 'error');
+        } else {
+            showAlert('Prueba eliminada con éxito.', 'success');
+            viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
+        }
+    }
+}
+
+async function fetchRankings(gameId) {
+    rankingsSummary.classList.remove('hidden');
+    rankingsContainer.innerHTML = '<p>Cargando rankings...</p>';
+    const { data: rankings, error } = await supabase
+        .from('player_stats')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('final_score', { ascending: false })
+        .order('time_completed', { ascending: true });
+    
+    if (error) {
+        console.error('Error fetching rankings:', error);
+        rankingsContainer.innerHTML = '<p>Error al cargar los rankings.</p>';
         return;
     }
 
-    const { error } = await supabase
-        .from('trials')
-        .delete()
-        .eq('id', trialId);
-
-    if (error) {
-        console.error('Error deleting trial:', error);
-        showAlert('Error al eliminar la prueba: ' + error.message, 'error');
-    } else {
-        showAlert('Prueba eliminada correctamente.', 'success');
-        viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
+    if (rankings.length === 0) {
+        rankingsContainer.innerHTML = '<p>No hay rankings disponibles para este juego aún.</p>';
+        return;
     }
-}
 
+    rankingsContainer.innerHTML = '';
+    rankings.forEach((ranking, index) => {
+        const item = document.createElement('div');
+        item.classList.add('ranking-item');
+        const formattedTime = ranking.time_completed ? new Date(ranking.time_completed).toLocaleString() : 'N/A';
+        item.innerHTML = `
+            <div class="team-info">#${index + 1} - ${ranking.team_name || 'Anónimo'}</div>
+            <div class="score-time">Puntuación: ${ranking.final_score} | Tiempo: ${formattedTime}</div>
+        `;
+        rankingsContainer.appendChild(item);
+    });
+}
 
 // --- Event Listeners ---
 
-createGameBtn.addEventListener('click', () => {
-    resetForm(gameForm);
-    formTitle.textContent = 'Crear Nuevo Juego';
-    gameNameDisplay.textContent = '';
-    showSection(gameFormSection);
-});
-cancelGameBtn.addEventListener('click', () => {
-    resetForm(gameForm);
-    showSection(gameListSection);
-});
-backToGamesBtn.addEventListener('click', () => {
-    current_game_id = null;
-    current_game_name = null;
-    current_game_adventure_type = null;
-    showSection(gameListSection);
+document.addEventListener('DOMContentLoaded', () => {
     fetchGames();
-});
-previewGameBtn.addEventListener('click', () => {
-    if (current_game_id) {
-        showAlert(`Funcionalidad de previsualización para el juego: ${current_game_name} (ID: ${current_game_id})\n\nEsta característica está pendiente de implementación. Aquí se renderizaría el juego tal como lo verían los jugadores.`, 'info');
-    } else {
-        showAlert('Por favor, selecciona o crea un juego para previsualizar.', 'warning');
-    }
-});
+    gameForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveGame();
+    });
+    locationForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveLocation();
+    });
+    trialForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveTrial();
+    });
+
+    // Delegación de eventos para la lista de juegos
+    gameListDiv.addEventListener('click', (e) => {
+        if (e.target.classList.contains('view-button')) {
+            const id = e.target.dataset.id;
+            const name = e.target.dataset.name;
+            const type = e.target.dataset.type;
+            viewLocations(id, name, type);
+        } else if (e.target.classList.contains('edit-button')) {
+            const id = e.target.dataset.id;
+            editGame(id);
+        } else if (e.target.classList.contains('delete-button')) {
+            const id = e.target.dataset.id;
+            deleteGame(id);
+        }
+    });
+
+    // Delegación de eventos para la lista de ubicaciones
+    locationListDiv.addEventListener('click', (e) => {
+        if (e.target.classList.contains('view-button')) {
+            const id = e.target.dataset.id;
+            const name = e.target.dataset.name;
+            const isSelectable = e.target.dataset.isSelectable === 'true';
+            viewTrials(id, name, isSelectable);
+        } else if (e.target.classList.contains('edit-button')) {
+            const id = e.target.dataset.id;
+            editLocation(id);
+        } else if (e.target.classList.contains('delete-button')) {
+            const id = e.target.dataset.id;
+            deleteLocation(id);
+        }
+    });
+    
+    // Delegación de eventos para la lista de pruebas
+    trialListDiv.addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-button')) {
+            const id = e.target.dataset.id;
+            editTrial(id);
+        } else if (e.target.classList.contains('delete-button')) {
+            const id = e.target.dataset.id;
+            deleteTrial(id);
+        }
+    });
+
+    // Botones de navegación
+    createGameBtn.addEventListener('click', () => {
+        resetForm(gameForm);
+        document.getElementById('form-title').textContent = 'Crear Nuevo Juego';
+        showSection(gameFormSection);
+    });
+    cancelGameBtn.addEventListener('click', () => {
+        resetForm(gameForm);
+        showSection(gameListSection);
+    });
+    backToGamesBtn.addEventListener('click', () => {
+        current_game_id = null;
+        current_game_name = null;
+        current_game_adventure_type = null;
+        showSection(gameListSection);
+        fetchGames();
+    });
+    previewGameBtn.addEventListener('click', () => {
+        fetchRankings(current_game_id);
+    });
+
+    addLocationBtn.addEventListener('click', () => {
+        resetForm(locationForm);
+        document.getElementById('location-form-title').textContent = 'Crear Nueva Ubicación';
+        showSection(locationFormSection);
+    });
+    cancelLocationBtn.addEventListener('click', () => {
+        resetForm(locationForm);
+        showSection(locationListSection);
+    });
+    backToLocationsBtn.addEventListener('click', () => {
+        current_location_id = null;
+        current_location_name = null;
+        current_location_is_selectable_trials = null;
+        showSection(locationListSection);
+        viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+    });
+
+    getCurrentLocationBtn.addEventListener('click', getCurrentLocation);
 
 
-gameForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveGame();
-});
-locationForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveLocation();
-});
-trialForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveTrial();
-});
+    addTrialBtn.addEventListener('click', () => {
+        resetForm(trialForm);
+        trialFormTitle.textContent = 'Crear Nueva Prueba';
+        showSection(trialFormSection);
+        showTrialSpecificFields();
+    });
+    cancelTrialBtn.addEventListener('click', () => {
+        resetForm(trialForm);
+        showSection(trialListSection);
+    });
 
-addLocationBtn.addEventListener('click', () => {
-    resetForm(locationForm);
-    document.getElementById('location-form-title').textContent = 'Crear Nueva Ubicación';
-    showSection(locationFormSection);
+    trialTypeInput.addEventListener('change', showTrialSpecificFields);
+    textAnswerTypeInput.addEventListener('change', showTrialSpecificFields);
+    // NUEVO: Escuchar los cambios en el campo de opciones para generar dinámicamente los campos de caminos alternativos
+    textOptionsInput.addEventListener('input', (e) => {
+        if (textAnswerTypeInput.value === 'multiple_options') {
+            generateOptionPathFields(e.target.value);
+        }
+    });
+
+    // Navegación con la tecla de escape para cerrar formularios
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            if (!gameListSection.classList.contains('hidden')) {
+                // Estamos en la lista de juegos, no hacer nada
+            } else if (!gameFormSection.classList.contains('hidden')) {
+                cancelGameBtn.click();
+            } else if (!locationListSection.classList.contains('hidden')) {
+                backToGamesBtn.click();
+            } else if (!locationFormSection.classList.contains('hidden')) {
+                cancelLocationBtn.click();
+            } else if (!trialListSection.classList.contains('hidden')) {
+                backToLocationsBtn.click();
+            } else if (!trialFormSection.classList.contains('hidden')) {
+                cancelTrialBtn.click();
+            }
+        }
+    });
 });
-cancelLocationBtn.addEventListener('click', () => {
-    resetForm(locationForm);
-    showSection(locationListSection);
-});
-backToLocationsBtn.addEventListener('click', () => {
-    current_location_id = null;
-    current_location_name = null;
-    current_location_is_selectable_trials = null;
-    showSection(locationListSection);
-    viewLocations(current_game_id, current_game_name, current_game_adventure_type);
-});
-
-getCurrentLocationBtn.addEventListener('click', getCurrentLocation);
-
-
-addTrialBtn.addEventListener('click', () => {
-    resetForm(trialForm);
-    trialFormTitle.textContent = 'Crear Nueva Prueba';
-    showSection(trialFormSection);
-    showTrialSpecificFields();
-});
-cancelTrialBtn.addEventListener('click', () => {
-    resetForm(trialForm);
-    showSection(trialListSection);
-});
-
-trialTypeInput.addEventListener('change', showTrialSpecificFields);
-textAnswerTypeInput.addEventListener('change', showTrialSpecificFields);
-
-
-document.addEventListener('DOMContentLoaded', fetchGames);
