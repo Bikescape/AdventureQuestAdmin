@@ -1,5 +1,9 @@
 // admin-script.js
 
+// Importa el cliente de Supabase desde el archivo de configuración
+import { supabase } from './admin-supabase-config.js';
+console.log('admin-script.js cargado correctamente.');
+
 // ==========================================================================================================
 // ESTADO GLOBAL DE LA APLICACIÓN
 // ==========================================================================================================
@@ -37,7 +41,6 @@ const addTrialBtn = document.getElementById('add-trial-btn');
 const cancelTrialBtn = document.getElementById('cancel-trial-btn');
 const backToTrialsBtn = document.getElementById('back-to-trials-btn');
 
-
 // Otros elementos de UI
 const trialTypeInput = document.getElementById('trial-type-input');
 const textOptionsInput = document.getElementById('text-options'); // Obtenemos el campo de opciones
@@ -50,6 +53,43 @@ const locationFormTitle = document.getElementById('location-form-title');
 const trialFormTitle = document.getElementById('trial-form-title');
 const gameNameHeader = document.getElementById('game-name-header');
 const locationNameHeader = document.getElementById('location-name-header');
+
+
+// ==========================================================================================================
+// AUTENTICACIÓN
+// ==========================================================================================================
+async function setupAuth() {
+    console.log('Iniciando proceso de autenticación...');
+    // Intenta obtener la sesión actual
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (error) {
+        console.error("Error al obtener la sesión:", error);
+        showAppAlert("Error de autenticación. Revisa la consola.", "error");
+        return;
+    }
+
+    if (session) {
+        currentUserId = session.user.id;
+        console.log("Usuario autenticado con Supabase:", currentUserId);
+        loadGames();
+    } else {
+        // Si no hay sesión, intenta iniciar sesión de forma anónima
+        const { data, error } = await supabase.auth.signInAnonymously();
+        if (error) {
+            console.error("Error al iniciar sesión de forma anónima:", error);
+            showAppAlert("No se pudo iniciar sesión. Revisa la consola.", "error");
+            return;
+        }
+        if (data.user) {
+            currentUserId = data.user.id;
+            console.log("Sesión anónima iniciada con Supabase:", currentUserId);
+            loadGames();
+        } else {
+            console.error("No se pudo obtener un usuario después del inicio de sesión anónimo.");
+            showAppAlert("No se pudo iniciar sesión. Vuelve a intentarlo.", "error");
+        }
+    }
+}
 
 
 // ==========================================================================================================
@@ -82,17 +122,9 @@ function resetForm(form) {
 // LÓGICA DE LOS FORMULARIOS Y EVENT LISTENERS
 // ==========================================================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Comprobar si hay una sesión activa al cargar la página
-    supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-            currentUserId = session.user.id;
-            loadGames();
-        } else {
-            console.log("No hay sesión activa. Esperando a que el usuario inicie sesión.");
-            showSection(gameListSection);
-            gameListDiv.innerHTML = '<p>Inicia sesión en tu proyecto Supabase para ver y crear juegos.</p>';
-        }
-    });
+    console.log('DOM completamente cargado. Inicializando la aplicación.');
+    // Iniciar el proceso de autenticación y carga de juegos
+    setupAuth();
 
     showSection(gameListSection);
 
@@ -168,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==========================================================================================================
 
 async function loadGames() {
+    console.log('Cargando juegos...');
     if (!currentUserId) {
         console.error("Usuario no autenticado. No se pueden cargar los juegos.");
         return;
@@ -217,8 +250,15 @@ async function loadGames() {
 }
 
 async function loadLocations(gameId) {
+    console.log(`Cargando ubicaciones para el juego ${gameId}...`);
     if (!currentUserId || !gameId) return;
-    gameNameHeader.textContent = `Ubicaciones de: ${document.getElementById('game-name-input').value || ''}`;
+
+    const { data: game, error: gameError } = await supabase.from('games').select('name').eq('id', gameId).single();
+    if (gameError) {
+        console.error("Error al obtener el nombre del juego:", gameError);
+        return;
+    }
+    gameNameHeader.textContent = `Ubicaciones de: ${game.name}`;
 
     const { data: locations, error } = await supabase
         .from('locations')
@@ -265,8 +305,14 @@ async function loadLocations(gameId) {
 }
 
 async function loadTrials(locationId) {
+    console.log(`Cargando pruebas para la ubicación ${locationId}...`);
     if (!currentUserId || !currentGameId || !locationId) return;
-    locationNameHeader.textContent = `Pruebas de: ${document.getElementById('location-name-input').value || ''}`;
+    const { data: location, error: locError } = await supabase.from('locations').select('name').eq('id', locationId).single();
+    if (locError) {
+        console.error("Error al obtener el nombre de la ubicación:", locError);
+        return;
+    }
+    locationNameHeader.textContent = `Pruebas de: ${location.name}`;
     
     const { data: trials, error } = await supabase
         .from('trials')
@@ -313,6 +359,7 @@ async function loadTrials(locationId) {
 // ==========================================================================================================
 
 async function saveGame(e) {
+    console.log('Intentando guardar juego...');
     e.preventDefault();
     const gameName = document.getElementById('game-name-input').value;
     const adventureType = document.getElementById('adventure-type-input').value;
@@ -346,6 +393,7 @@ async function saveGame(e) {
 }
 
 async function saveLocation(e) {
+    console.log('Intentando guardar ubicación...');
     e.preventDefault();
     const locationName = document.getElementById('location-name-input').value;
     const lat = document.getElementById('location-lat-input').value;
@@ -385,6 +433,7 @@ async function saveLocation(e) {
 }
 
 async function saveTrial(e) {
+    console.log('Intentando guardar prueba...');
     e.preventDefault();
     const trialType = trialTypeInput.value;
     const question = document.getElementById('trial-question-input').value;
@@ -457,6 +506,7 @@ async function saveTrial(e) {
 // ==========================================================================================================
 
 async function editGame(gameId) {
+    console.log(`Editando juego ${gameId}...`);
     const { data: game, error } = await supabase.from('games').select('*').eq('id', gameId).single();
     if (error) {
         console.error("Error al obtener el juego:", error.message);
@@ -470,6 +520,7 @@ async function editGame(gameId) {
 }
 
 async function editLocation(locationId) {
+    console.log(`Editando ubicación ${locationId}...`);
     const { data: loc, error } = await supabase.from('locations').select('*').eq('id', locationId).single();
     if (error) {
         console.error("Error al obtener la ubicación:", error.message);
@@ -487,6 +538,7 @@ async function editLocation(locationId) {
 }
 
 async function editTrial(trialId) {
+    console.log(`Editando prueba ${trialId}...`);
     const { data: trial, error } = await supabase.from('trials').select('*').eq('id', trialId).single();
     if (error) {
         console.error("Error al obtener la prueba:", error.message);
@@ -527,17 +579,18 @@ async function editTrial(trialId) {
 // FUNCIONES DE VISTA (NAVIGATION)
 // ==========================================================================================================
 function viewLocations(gameId, gameName, adventureType) {
+    console.log(`Viendo ubicaciones para el juego: ${gameId}`);
     currentGameId = gameId;
     currentAdventureType = adventureType;
-    document.getElementById('game-name-input').value = gameName;
-    document.getElementById('adventure-type-input').value = adventureType;
+    gameNameHeader.textContent = `Ubicaciones de: ${gameName}`;
     showSection(locationListSection);
     loadLocations(gameId);
 }
 
 function viewTrials(locationId, locationName) {
+    console.log(`Viendo pruebas para la ubicación: ${locationId}`);
     currentLocationId = locationId;
-    document.getElementById('location-name-input').value = locationName;
+    locationNameHeader.textContent = `Pruebas de: ${locationName}`;
     showSection(trialListSection);
     loadTrials(locationId);
 }
@@ -552,6 +605,7 @@ async function deleteGame(gameId) {
             const { error } = await supabase.from('games').delete().eq('id', gameId);
             if (error) throw error;
             showAppAlert('Juego eliminado.', 'success');
+            loadGames();
         } catch (error) {
             console.error("Error al eliminar el juego:", error.message);
             showAppAlert('Error al eliminar el juego.', 'error');
@@ -565,6 +619,7 @@ async function deleteLocation(locationId) {
             const { error } = await supabase.from('locations').delete().eq('id', locationId);
             if (error) throw error;
             showAppAlert('Ubicación eliminada.', 'success');
+            loadLocations(currentGameId);
         } catch (error) {
             console.error("Error al eliminar la ubicación:", error.message);
             showAppAlert('Error al eliminar la ubicación.', 'error');
@@ -578,6 +633,7 @@ async function deleteTrial(trialId) {
             const { error } = await supabase.from('trials').delete().eq('id', trialId);
             if (error) throw error;
             showAppAlert('Prueba eliminada.', 'success');
+            loadTrials(currentLocationId);
         } catch (error) {
             console.error("Error al eliminar la prueba:", error.message);
             showAppAlert('Error al eliminar la prueba.', 'error');
@@ -632,7 +688,7 @@ function getCurrentLocation() {
 }
 
 // ==========================================================================================================
-// LÓGICA DE CAMPOS CONDICIONALES PARA PRUEBAS (SOLUCIÓN)
+// LÓGICA DE CAMPOS CONDICIONALES PARA PRUEBAS
 // ==========================================================================================================
 // Función que muestra los campos específicos según el tipo de prueba
 function showTrialSpecificFields() {
