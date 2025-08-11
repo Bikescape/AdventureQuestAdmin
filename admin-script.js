@@ -40,6 +40,8 @@ const backToTrialsBtn = document.getElementById('back-to-trials-btn');
 
 // Otros elementos de UI
 const trialTypeInput = document.getElementById('trial-type-input');
+const textOptionsInput = document.getElementById('text-options'); // Obtenemos el campo de opciones
+const textAnswerTypeInput = document.getElementById('text-answer-type-input');
 const gameListDiv = document.getElementById('game-list');
 const locationListDiv = document.getElementById('location-list');
 const trialListDiv = document.getElementById('trial-list');
@@ -164,6 +166,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     trialTypeInput.addEventListener('change', showTrialSpecificFields);
+    // NUEVO: Escuchar los cambios en el campo de opciones para generar dinámicamente los campos de caminos alternativos
+    textOptionsInput.addEventListener('input', () => {
+        if (trialTypeInput.value === 'multiple-choice' || trialTypeInput.value === 'ordering') {
+            generateOptionPathFields();
+        }
+    });
     gameForm.addEventListener('submit', saveGame);
     locationForm.addEventListener('submit', saveLocation);
     trialForm.addEventListener('submit', saveTrial);
@@ -413,15 +421,17 @@ async function saveTrial(e) {
         location_id: currentLocationId
     };
 
-    // AÑADIDO: Lógica para los campos específicos de caminos para múltiples opciones
+    // Lógica para los campos específicos de caminos alternativos para múltiples opciones
     if (trialType === 'multiple-choice' || trialType === 'ordering') {
-        const options = document.getElementById('text-options').value.split(';');
+        const options = document.getElementById('text-options').value.split(';').map(opt => opt.trim());
         const correctOptions = document.getElementById('text-correct-answer-multi-ordering').value;
         const nextLocationPaths = {};
         options.forEach((option, index) => {
-            const pathInput = document.getElementById(`next-path-${index}-input`);
-            if (pathInput) {
-                nextLocationPaths[option] = pathInput.value;
+            if (option) {
+                const pathInput = document.getElementById(`next-path-${index}-input`);
+                if (pathInput && pathInput.value) {
+                    nextLocationPaths[option] = pathInput.value;
+                }
             }
         });
         
@@ -504,14 +514,14 @@ async function editTrial(trialId) {
     document.getElementById('trial-order-input').value = trial.order;
     document.getElementById('next-location-id-input').value = trial.nextLocationId;
 
-    // AÑADIDO: Llenar campos específicos de la prueba para las opciones
+    // Llenar campos específicos de la prueba para las opciones y sus caminos
     if (trial.type === 'multiple-choice' || trial.type === 'ordering') {
         document.getElementById('text-options').value = trial.options?.join(';') || '';
         document.getElementById('text-correct-answer-multi-ordering').value = trial.correctOptions || '';
         showTrialSpecificFields(); // Genera los campos de camino dinámicamente
         if (trial.nextLocationPaths) {
-            Object.keys(trial.nextLocationPaths).forEach((option, index) => {
-                const pathInput = document.getElementById(`next-path-${index}-input`);
+            Object.keys(trial.nextLocationPaths).forEach((option) => {
+                const pathInput = document.querySelector(`.option-path-field input[placeholder="ID de la próxima ubicación para '${option}'"]`);
                 if (pathInput) {
                     pathInput.value = trial.nextLocationPaths[option];
                 }
@@ -656,7 +666,7 @@ function showTrialSpecificFields() {
         case 'multiple-choice':
         case 'ordering':
             multipleOptionsFields.classList.remove('hidden');
-            generatePathFields(); // Generar los campos para los caminos
+            generateOptionPathFields(); // Genera los campos para los caminos
             break;
         case 'proximity':
             proximityFields.classList.remove('hidden');
@@ -667,20 +677,19 @@ function showTrialSpecificFields() {
 }
 
 // Genera dinámicamente los campos de camino para las pruebas de opciones múltiples
-function generatePathFields() {
+function generateOptionPathFields() {
     const optionsText = document.getElementById('text-options').value;
     const optionsArray = optionsText.split(';').map(opt => opt.trim()).filter(opt => opt.length > 0);
     const optionsPathsDiv = document.getElementById('multiple-options-paths');
     optionsPathsDiv.innerHTML = '';
 
     if (optionsArray.length > 0) {
-        optionsPathsDiv.innerHTML = `<h3>Configuración de Caminos</h3><p>Establece la siguiente ubicación para cada opción.</p>`;
         optionsArray.forEach((option, index) => {
             const field = document.createElement('div');
             field.className = 'option-path-field';
             field.innerHTML = `
                 <label for="next-path-${index}-input">Próxima Ubicación para la opción "${option}":</label>
-                <input type="text" id="next-path-${index}-input" placeholder="ID de la próxima ubicación">
+                <input type="text" id="next-path-${index}-input" placeholder="ID de la próxima ubicación para '${option}'">
             `;
             optionsPathsDiv.appendChild(field);
         });
