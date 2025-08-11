@@ -1,34 +1,40 @@
 // admin/supabase-config.js
 // Configuración de Supabase (Admin)
-const SUPABASE_URL = 'https://keunztapjynaavjjdmlb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldW56dGFwanluYWF2ampkbWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDQ2MTksImV4cCI6MjA2OTAyMDYxOX0.woiFMVYYtalXgYp6uTrflE4dg-1XCjS8bRfqMOf5eoY';
+// Asegúrate de reemplazar con tus propias credenciales de Supabase
+const SUPABASE_URL = 'https://keunztapjynaavjjdmlb.supabase.co'; // Reemplaza con tu URL de Supabase
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtldW56dGFwanluYWF2ampkbWxiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM0NDQ2MTksImV4cCI6MjA2OTAyMDYxOX0.woiFMVYYtalXgYp6uTrflE4dg-1XCjS8bRfqMOf5eoY'; // Reemplaza con tu clave anon de Supabase
 
-// Verificamos si window.supabase existe y si createClient está disponible
-let supabase = null; // Inicializamos con null para que siempre tenga un valor para exportar
+// ¡CORRECCIÓN CRÍTICA AQUÍ! Acceso directo a la función createClient a través de window.supabase
+// Aseguramos que window.supabase exista antes de intentar usarlo
+let supabase;
 if (window.supabase && typeof window.supabase.createClient === 'function') {
     supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    console.log('Supabase client inicializado correctamente.');
 } else {
-    console.error("Error: La librería de Supabase no se cargó correctamente. Asegúrate de que la etiqueta <script> del CDN esté antes de tus scripts modulares en el HTML.");
+    console.error("Error: Supabase client library not loaded correctly or createClient function is missing.");
+    // Puedes añadir una alerta o un mensaje en la UI para el usuario si esto falla
+    alert("Error de inicialización: La librería de Supabase no se cargó correctamente. Revisa la consola para más detalles.");
 }
 
-// Función de utilidad para mostrar alertas
-function showAppAlert(message, type = 'info') {
+
+// Función de utilidad para mostrar alertas (copia de shared/utils.js para evitar complejidad de módulos)
+function showAlert(message, type = 'info') {
     let alertDiv = document.getElementById('app-alert');
     if (!alertDiv) {
         alertDiv = document.createElement('div');
         alertDiv.id = 'app-alert';
         document.body.appendChild(alertDiv);
     }
+
     alertDiv.textContent = message;
-    alertDiv.className = `app-alert ${type}`;
+    alertDiv.className = `app-alert ${type}`; // Clase base y tipo (info, success, warning, error)
     alertDiv.style.display = 'block';
+
     setTimeout(() => {
         alertDiv.style.display = 'none';
-    }, 3000);
+    }, 3000); // Ocultar después de 3 segundos
 }
 
-// Añadir estilos para la alerta (si no existen)
+// Añadir estilos para la alerta (puedes moverlo a styles.css si prefieres)
 const alertStyle = document.createElement('style');
 alertStyle.innerHTML = `
     .app-alert {
@@ -42,15 +48,12 @@ alertStyle.innerHTML = `
         font-weight: bold;
         z-index: 10000;
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-        display: none;
-        transition: all 0.3s ease-in-out;
+        display: none; /* Hidden by default */
+        text-align: center;
     }
-    .app-alert.info { background-color: #3b82f6; }
-    .app-alert.success { background-color: #10b981; }
-    .app-alert.warning { background-color: #f59e0b; }
-    .app-alert.error { background-color: #ef4444; }
+    .app-alert.info { background-color: #2196F3; }
+    .app-alert.success { background-color: #4CAF50; }
+    .app-alert.warning { background-color: #ff9800; }
+    .app-alert.error { background-color: #f44336; }
 `;
 document.head.appendChild(alertStyle);
-
-// Exportar el cliente Supabase para su uso en otros módulos
-export { supabase, showAppAlert };
