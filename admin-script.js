@@ -54,6 +54,49 @@ const trialFormTitle = document.getElementById('trial-form-title');
 const gameNameHeader = document.getElementById('game-name-header');
 const locationNameHeader = document.getElementById('location-name-header');
 
+// ==========================================================================================================
+// FUNCIONES DE UTILIDAD PARA LA UI
+// ==========================================================================================================
+
+// NUEVO: Función para mostrar un modal de confirmación en lugar de la función nativa del navegador
+function showAppModal(title, message, onConfirm) {
+    const modal = document.createElement('div');
+    modal.className = 'app-modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>${title}</h2>
+            <p>${message}</p>
+            <div class="modal-actions">
+                <button class="modal-confirm-btn">Confirmar</button>
+                <button class="modal-cancel-btn">Cancelar</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector('.close-button');
+    const confirmBtn = modal.querySelector('.modal-confirm-btn');
+    const cancelBtn = modal.querySelector('.modal-cancel-btn');
+
+    closeBtn.addEventListener('click', () => modal.remove());
+    cancelBtn.addEventListener('click', () => modal.remove());
+    confirmBtn.addEventListener('click', () => {
+        onConfirm();
+        modal.remove();
+    });
+}
+
+function showSection(section) {
+    const sections = [gameListSection, gameFormSection, locationListSection, locationFormSection, trialListSection, trialFormSection, rankingsSummary];
+    sections.forEach(sec => sec.classList.add('hidden'));
+    section.classList.remove('hidden');
+}
+
+function resetForm(form) {
+    form.reset();
+    document.getElementById('trial-form').dataset.trialId = '';
+}
 
 // ==========================================================================================================
 // AUTENTICACIÓN
@@ -98,20 +141,6 @@ async function setupAuth() {
     }
 }
 
-
-// ==========================================================================================================
-// FUNCIONES DE UTILIDAD PARA LA UI
-// ==========================================================================================================
-function showSection(section) {
-    const sections = [gameListSection, gameFormSection, locationListSection, locationFormSection, trialListSection, trialFormSection, rankingsSummary];
-    sections.forEach(sec => sec.classList.add('hidden'));
-    section.classList.remove('hidden');
-}
-
-function resetForm(form) {
-    form.reset();
-    document.getElementById('trial-form').dataset.trialId = '';
-}
 
 // ==========================================================================================================
 // LÓGICA DE LOS FORMULARIOS Y EVENT LISTENERS
@@ -200,6 +229,8 @@ async function loadGames() {
         console.error("Usuario no autenticado. No se pueden cargar los juegos.");
         return;
     }
+    console.log("ID de usuario actual:", currentUserId); // NUEVO: Muestra el ID del usuario actual para depuración
+    
     const { data: games, error } = await supabase
         .from('games')
         .select('*')
@@ -210,6 +241,8 @@ async function loadGames() {
         showAppAlert('Error al cargar los juegos.', 'error');
         return;
     }
+
+    console.log('Juegos cargados:', games); // NUEVO: Muestra los juegos recuperados para depuración
 
     gameListDiv.innerHTML = '';
     if (games.length === 0) {
@@ -470,7 +503,7 @@ async function saveTrial(e) {
         trialData.correctAnswer = correctAnswer;
         trialData.nextLocationId = document.getElementById('next-location-id-input').value || null;
     } else if (trialType === 'multiple-choice' || trialType === 'ordering') {
-        const options = document.getElementById('text-options').value.split(';').map(opt => opt.trim());
+        const options = document.getElementById('text-options').value.split(';').map(opt => opt.trim()).filter(opt => opt.length > 0);
         const correctOptions = document.getElementById('text-correct-answer-multi-ordering').value;
         const nextLocationPaths = {};
         options.forEach((option, index) => {
@@ -625,7 +658,7 @@ function viewTrials(locationId, locationName) {
 // ==========================================================================================================
 
 async function deleteGame(gameId) {
-    if (confirm('¿Estás seguro de que quieres eliminar este juego y todas sus ubicaciones y pruebas?')) {
+    showAppModal('Confirmar eliminación', '¿Estás seguro de que quieres eliminar este juego y todas sus ubicaciones y pruebas?', async () => {
         try {
             // Verificamos si el cliente de Supabase se inicializó correctamente
             if (!supabase) {
@@ -640,11 +673,11 @@ async function deleteGame(gameId) {
             console.error("Error al eliminar el juego:", error.message);
             showAppAlert('Error al eliminar el juego.', 'error');
         }
-    }
+    });
 }
 
 async function deleteLocation(locationId) {
-    if (confirm('¿Estás seguro de que quieres eliminar esta ubicación y todas sus pruebas?')) {
+    showAppModal('Confirmar eliminación', '¿Estás seguro de que quieres eliminar esta ubicación y todas sus pruebas?', async () => {
         try {
             // Verificamos si el cliente de Supabase se inicializó correctamente
             if (!supabase) {
@@ -659,11 +692,11 @@ async function deleteLocation(locationId) {
             console.error("Error al eliminar la ubicación:", error.message);
             showAppAlert('Error al eliminar la ubicación.', 'error');
         }
-    }
+    });
 }
 
 async function deleteTrial(trialId) {
-    if (confirm('¿Estás seguro de que quieres eliminar esta prueba?')) {
+    showAppModal('Confirmar eliminación', '¿Estás seguro de que quieres eliminar esta prueba?', async () => {
         try {
             // Verificamos si el cliente de Supabase se inicializó correctamente
             if (!supabase) {
@@ -678,7 +711,7 @@ async function deleteTrial(trialId) {
             console.error("Error al eliminar la prueba:", error.message);
             showAppAlert('Error al eliminar la prueba.', 'error');
         }
-    }
+    });
 }
 
 // ==========================================================================================================
