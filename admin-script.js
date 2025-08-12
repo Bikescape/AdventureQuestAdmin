@@ -7,6 +7,7 @@ let current_game_adventure_type = null;
 let current_location_id = null;
 let current_location_name = null;
 let current_location_is_selectable_trials = null;
+let all_locations_for_current_game = []; // Nuevo array para guardar todas las ubicaciones
 
 // Variables para el mapa de ubicaciones
 let locationMap = null;
@@ -25,577 +26,757 @@ const rankingsSummary = document.getElementById('rankings-summary');
 const createGameBtn = document.getElementById('create-game-btn');
 const cancelGameBtn = document.getElementById('cancel-game-btn');
 const backToGamesBtn = document.getElementById('back-to-games-btn');
-const previewGameBtn = document.getElementById('preview-game-btn');
 
 const addLocationBtn = document.getElementById('add-location-btn');
 const cancelLocationBtn = document.getElementById('cancel-location-btn');
 const backToLocationsBtn = document.getElementById('back-to-locations-btn');
 
+const getCurrentLocationBtn = document.getElementById('get-current-location-btn');
+
 const addTrialBtn = document.getElementById('add-trial-btn');
 const cancelTrialBtn = document.getElementById('cancel-trial-btn');
 
-// Formularios
+// Formularios e inputs
 const gameForm = document.getElementById('game-form');
 const locationForm = document.getElementById('location-form');
 const trialForm = document.getElementById('trial-form');
 
-// Inputs de los formularios (Game)
-const gameIdInput = document.getElementById('game-id');
-const gameTitleInput = document.getElementById('game-title');
-const gameDescriptionInput = document.getElementById('game-description');
-const gameMechanicsInput = document.getElementById('game-mechanics');
-const gameInitialNarrativeInput = document.getElementById('game-initial-narrative');
-const gameImageUrlInput = document.getElementById('game-image-url');
-const gameAudioUrlInput = document.getElementById('game-audio-url');
-const gameAdventureTypeInput = document.getElementById('game-adventure-type');
-const gameInitialScorePerTrialInput = document.getElementById('game-initial-score-per-trial');
-const gameIsActiveInput = document.getElementById('game-is-active');
-
-// Inputs de los formularios (Location)
-const locationIdInput = document.getElementById('location-id');
-const currentGameIdLocationInput = document.getElementById('current-game-id-location');
-const locationNameInput = document.getElementById('location-name');
-const locationOrderIndexInput = document.getElementById('location-order-index');
-const preArrivalNarrativeInput = document.getElementById('pre-arrival-narrative');
-const locationInitialNarrativeInput = document.getElementById('location-initial-narrative');
-const locationImageUrlInput = document.getElementById('location-image-url');
-const locationAudioUrlInput = document.getElementById('location-audio-url');
-const locationIsSelectableTrialsInput = document.getElementById('location-is-selectable-trials');
-const locationLatitudeInput = document.getElementById('location-latitude');
-const locationLongitudeInput = document.getElementById('location-longitude');
-const locationToleranceInput = document.getElementById('location-tolerance');
-const getCurrentLocationBtn = document.getElementById('get-current-location-btn');
-
-
-// Inputs de los formularios (Trial)
-const trialIdInput = document.getElementById('trial-id');
-const currentLocationIdTrialInput = document.getElementById('current-location-id-trial');
-const trialNameInput = document.getElementById('trial-name');
 const trialTypeInput = document.getElementById('trial-type');
-const trialOrderIndexInput = document.getElementById('trial-order-index');
-const trialNarrativeInput = document.getElementById('trial-narrative');
-const trialImageUrlInput = document.getElementById('trial-image-url');
-const trialAudioUrlInput = document.getElementById('trial-audio-url');
-const trialHintCountInput = document.getElementById('trial-hint-count');
-const trialHintCostInput = document.getElementById('trial-hint-cost');
-
-// Campos específicos de prueba
-const hint1Input = document.getElementById('hint1');
-const hint2Input = document.getElementById('hint2');
-const hint3Input = document.getElementById('hint3');
-const qrFields = document.getElementById('qr-fields');
-const qrContentInput = document.getElementById('qr-content');
-const gpsFields = document.getElementById('gps-fields');
-const gpsLatitudeInput = document.getElementById('gps-latitude');
-const gpsLongitudeInput = document.getElementById('gps-longitude');
-const gpsToleranceInput = document.getElementById('gps-tolerance');
-const textFields = document.getElementById('text-fields');
-const textQuestionInput = document.getElementById('text-question');
-const textAnswerTypeInput = document.getElementById('text-answer-type');
+const trialSpecificFields = document.querySelectorAll('.trial-specific-fields');
 const singleNumericAnswerFields = document.getElementById('single-numeric-answer-fields');
-const textCorrectAnswerSingleNumericInput = document.getElementById('text-correct-answer-single-numeric');
 const multiOrderingAnswerFields = document.getElementById('multi-ordering-answer-fields');
-const textOptionsInput = document.getElementById('text-options');
-const textCorrectAnswerMultiOrderingInput = document.getElementById('text-correct-answer-multi-ordering');
-const multiPathFields = document.getElementById('multi-path-fields'); // Nuevo contenedor para campos de multi-ruta
-const multiPathList = document.getElementById('multi-path-list'); // Nuevo contenedor para las rutas
 
-// Contenedores de listas
-const gameListDiv = document.getElementById('game-list');
-const locationListDiv = document.getElementById('location-list');
-const trialListDiv = document.getElementById('trial-list');
-const rankingsContainer = document.getElementById('rankings-container');
+const trialOptionsTextarea = document.getElementById('text-options');
+const multiPathFields = document.getElementById('multi-path-fields');
+const multiPathListDiv = document.getElementById('multi-path-list');
+const multiPathHelpText = document.querySelector('#multi-path-fields .help-text');
 
-// Otros elementos de texto
-const formTitle = document.getElementById('form-title');
-const gameNameDisplay = document.querySelector('.game-name-display');
-const currentGameNameSpan = document.getElementById('current-game-name');
-const currentLocationNameSpan = document.getElementById('current-location-name');
-const trialFormTitle = document.getElementById('trial-form-title');
-
-// Manejadores de eventos para los nuevos campos
-textAnswerTypeInput.addEventListener('change', () => {
-    showTrialSpecificFields();
-    populateMultiPathOptions();
-});
-
-textOptionsInput.addEventListener('input', () => {
-    // Si el tipo de respuesta es de opciones múltiples, regenera la lista de rutas
-    if (textAnswerTypeInput.value === 'multiple_options') {
-        populateMultiPathOptions();
-    }
-});
-
-
-// Listener para el formulario de prueba
-trialForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveTrial();
-});
-
-
-// --- Funciones de navegación y UI ---
-
-function showSection(sectionToShow) {
-    const sections = [gameListSection, gameFormSection, locationListSection, locationFormSection, trialListSection, trialFormSection, rankingsSummary];
-    sections.forEach(section => {
-        if (section === sectionToShow) {
-            section.classList.remove('hidden');
-        } else {
-            section.classList.add('hidden');
-        }
-    });
-
-    if (sectionToShow === locationFormSection) {
-        initLocationMap();
-    } else {
-        if (locationMap) {
-            locationMap.remove();
-            locationMap = null;
-            locationMapMarker = null;
-        }
-    }
+// Funciones de navegación
+function showSection(section) {
+    document.querySelectorAll('.admin-section').forEach(s => s.classList.add('hidden'));
+    section.classList.remove('hidden');
 }
-
-function showTrialSpecificFields() {
-    qrFields.classList.add('hidden');
-    gpsFields.classList.add('hidden');
-    textFields.classList.add('hidden');
-    singleNumericAnswerFields.classList.add('hidden');
-    multiOrderingAnswerFields.classList.add('hidden');
-    multiPathFields.classList.add('hidden'); // Ocultar por defecto
-
-    const trialType = trialTypeInput.value;
-    const answerType = textAnswerTypeInput.value;
-
-    if (trialType === 'qr') {
-        qrFields.classList.remove('hidden');
-    } else if (trialType === 'gps') {
-        gpsFields.classList.remove('hidden');
-    } else if (trialType === 'text') {
-        textFields.classList.remove('hidden');
-        if (answerType === 'single_choice' || answerType === 'numeric') {
-            singleNumericAnswerFields.classList.remove('hidden');
-        } else if (answerType === 'multiple_options' || answerType === 'ordering') {
-            multiOrderingAnswerFields.classList.remove('hidden');
-            if (answerType === 'multiple_options') {
-                 multiPathFields.classList.remove('hidden'); // Mostrar si es de opción múltiple
-                 populateMultiPathOptions();
-            }
-        }
-    }
-}
-
 
 function resetForm(form) {
     form.reset();
-    const hiddenInputs = form.querySelectorAll('input[type="hidden"]');
-    hiddenInputs.forEach(input => input.value = '');
-    if (form === gameForm) {
-        gameInitialScorePerTrialInput.value = 100;
-        gameAdventureTypeInput.value = 'linear';
-        gameIsActiveInput.checked = false;
-        gameImageUrlInput.value = '';
-        gameAudioUrlInput.value = '';
-    } else if (form === locationForm) {
-        locationOrderIndexInput.value = 1;
-        locationIsSelectableTrialsInput.checked = false;
-        locationToleranceInput.value = 10;
-        preArrivalNarrativeInput.value = '';
-        if (locationMapMarker) {
-            locationMap.removeLayer(locationMapMarker);
-            locationMapMarker = null;
-        }
-        locationLatitudeInput.value = '';
-        locationLongitudeInput.value = '';
-    } else if (form === trialForm) {
-        trialNameInput.value = '';
-        trialTypeInput.value = '';
-        trialHintCountInput.value = 3;
-        trialHintCostInput.value = 10;
-        trialOrderIndexInput.value = 1;
-        hint1Input.value = '';
-        hint2Input.value = '';
-        hint3Input.value = '';
-        textAnswerTypeInput.value = 'single_choice';
-        textOptionsInput.value = '';
-        textCorrectAnswerMultiOrderingInput.value = '';
-        // Limpiar los campos de multi-ruta
-        multiPathList.innerHTML = '';
-        showTrialSpecificFields();
-    }
+    form.querySelector('input[type="hidden"]').value = '';
+    // Ocultar campos específicos de prueba al resetear
+    trialSpecificFields.forEach(f => f.classList.add('hidden'));
 }
 
-// --- Lógica del Mapa Leaflet para Ubicaciones ---
-
-function initLocationMap(lat = 43.535, lon = -5.661, zoom = 13) {
-    if (locationMap) {
-        locationMap.remove();
-    }
-    locationMap = L.map('location-map').setView([lat, lon], zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(locationMap);
-    locationMap.on('click', function(e) {
-        updateMapMarker(e.latlng.lat, e.latlng.lng);
-        locationLatitudeInput.value = e.latlng.lat.toFixed(6);
-        locationLongitudeInput.value = e.latlng.lng.toFixed(6);
-    });
-    if (locationLatitudeInput.value && locationLongitudeInput.value) {
-        updateMapMarker(parseFloat(locationLatitudeInput.value), parseFloat(locationLongitudeInput.value));
-    }
-}
-
-function updateMapMarker(lat, lon) {
-    if (locationMapMarker) {
-        locationMapMarker.setLatLng([lat, lon]);
-    } else {
-        locationMapMarker = L.marker([lat, lon]).addTo(locationMap);
-    }
-    locationMap.setView([lat, lon], locationMap.getZoom());
-}
-
-function getCurrentLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(position => {
-            const {
-                latitude,
-                longitude
-            } = position.coords;
-            updateMapMarker(latitude, longitude);
-            locationLatitudeInput.value = latitude.toFixed(6);
-            locationLongitudeInput.value = longitude.toFixed(6);
-        }, () => {
-            showAlert('No se pudo obtener tu ubicación.', 'error');
-        });
-    } else {
-        showAlert('Geolocalización no soportada por este navegador.', 'error');
-    }
-}
-
-// --- Funciones de Lógica de la BD (Supabase) ---
-// (No se modifica para esta característica, se asume que las funciones de guardado
-// y obtención de datos ya manejan los nuevos campos)
-
-async function fetchGames() {
+// ----------------------------------------------------
+// Lógica de Juegos
+// ----------------------------------------------------
+async function viewGames() {
     showSection(gameListSection);
+    const gameListDiv = document.getElementById('game-list');
     gameListDiv.innerHTML = '<p>Cargando juegos...</p>';
     try {
-        const {
-            data,
-            error
-        } = await supabase.from('games').select('*').order('created_at', {
-            ascending: false
-        });
+        const { data, error } = await supabase
+            .from('games')
+            .select('*')
+            .order('created_at', { ascending: false });
+
         if (error) throw error;
-        renderGamesList(data);
-    } catch (error) {
-        console.error('Error al obtener juegos:', error);
-        showAlert('Error al cargar la lista de juegos.', 'error');
-        gameListDiv.innerHTML = '<p class="error-text">No se pudieron cargar los juegos. Inténtalo de nuevo más tarde.</p>';
+        renderGameList(data);
+    } catch (err) {
+        console.error('Error cargando juegos:', err.message);
+        gameListDiv.innerHTML = '<p class="error">Error al cargar los juegos.</p>';
     }
 }
 
-async function fetchLocations(gameId, gameName) {
-    showSection(locationListSection);
-    backToGamesBtn.dataset.gameId = gameId;
-    currentGameNameSpan.textContent = gameName;
-    gameNameDisplay.textContent = `| ${gameName}`;
-    locationListDiv.innerHTML = '<p>Cargando ubicaciones...</p>';
-    try {
-        const {
-            data,
-            error
-        } = await supabase.from('locations').select('*').eq('game_id', gameId).order('order_index', {
-            ascending: true
-        });
-        if (error) throw error;
-        renderLocationsList(data);
-    } catch (error) {
-        console.error('Error al obtener ubicaciones:', error);
-        showAlert('Error al cargar la lista de ubicaciones.', 'error');
-        locationListDiv.innerHTML = '<p class="error-text">No se pudieron cargar las ubicaciones. Inténtalo de nuevo más tarde.</p>';
-    }
-}
-
-async function fetchTrials(locationId, locationName) {
-    showSection(trialListSection);
-    currentLocationNameSpan.textContent = locationName;
-    const {
-        data: gameData
-    } = await supabase.from('games').select('adventure_type').eq('id', current_game_id).single();
-    const gameAdventureType = gameData ? gameData.adventure_type : 'linear';
-
-    try {
-        const {
-            data,
-            error
-        } = await supabase.from('trials').select('*').eq('location_id', locationId).order('order_index', {
-            ascending: true
-        });
-        if (error) throw error;
-        renderTrialsList(data, gameAdventureType);
-    } catch (error) {
-        console.error('Error al obtener pruebas:', error);
-        showAlert('Error al cargar la lista de pruebas.', 'error');
-        trialListDiv.innerHTML = '<p class="error-text">No se pudieron cargar las pruebas. Inténtalo de nuevo más tarde.</p>';
-    }
-}
-
-async function saveTrial() {
-    const trialId = trialIdInput.value;
-    const trialData = {
-        location_id: currentLocationIdTrialInput.value,
-        title: trialNameInput.value,
-        type: trialTypeInput.value,
-        order_index: parseInt(trialOrderIndexInput.value, 10),
-        narrative: trialNarrativeInput.value,
-        image_url: trialImageUrlInput.value,
-        audio_url: trialAudioUrlInput.value,
-        hint_count: parseInt(trialHintCountInput.value, 10),
-        hint_cost: parseInt(trialHintCostInput.value, 10),
-        multi_path_options: null, // Aseguramos que se reinicie
-        next_correct_location_id: null // Aseguramos que se reinicie
-    };
-
-    // Campos específicos de cada tipo
-    if (trialData.type === 'qr') {
-        trialData.qr_content = qrContentInput.value;
-    } else if (trialData.type === 'gps') {
-        trialData.gps_latitude = parseFloat(gpsLatitudeInput.value);
-        trialData.gps_longitude = parseFloat(gpsLongitudeInput.value);
-        trialData.gps_tolerance = parseFloat(gpsToleranceInput.value);
-    } else if (trialData.type === 'text') {
-        trialData.question = textQuestionInput.value;
-        trialData.answer_type = textAnswerTypeInput.value;
-        if (trialData.answer_type === 'single_choice' || trialData.answer_type === 'numeric') {
-            trialData.correct_answer = textCorrectAnswerSingleNumericInput.value;
-            // Para estos tipos, se usará la ubicación siguiente del tipo de aventura 'linear' si existe.
-            // Si el juego es 'linear', el siguiente location_id se toma automáticamente del juego.
-        } else if (trialData.answer_type === 'multiple_options' || trialData.answer_type === 'ordering') {
-            trialData.options = textOptionsInput.value.split(';').map(s => s.trim());
-            trialData.correct_answer = textCorrectAnswerMultiOrderingInput.value;
-        }
-
-        // Lógica para guardar las rutas alternativas
-        if (trialData.answer_type === 'multiple_options') {
-            const multiPathData = {};
-            // Corregimos la selección para buscar elementos <select>
-            const pathSelectors = multiPathList.querySelectorAll('select[data-option]');
-            let nextCorrectLocationId = null;
-
-            pathSelectors.forEach(select => {
-                const option = select.dataset.option;
-                const nextLocationId = select.value;
-                if (nextLocationId) {
-                    multiPathData[option] = nextLocationId;
-                    // También guardamos el ID de la ubicación correcta por separado para consistencia
-                    if (option === trialData.correct_answer) {
-                        nextCorrectLocationId = nextLocationId;
-                    }
-                }
-            });
-
-            trialData.multi_path_options = multiPathData;
-            trialData.next_correct_location_id = nextCorrectLocationId;
-        }
-    }
-
-    try {
-        if (trialId) {
-            const {
-                error
-            } = await supabase.from('trials').update(trialData).eq('id', trialId);
-            if (error) throw error;
-            showAlert('Prueba actualizada con éxito.', 'success');
-        } else {
-            const {
-                error
-            } = await supabase.from('trials').insert(trialData);
-            if (error) throw error;
-            showAlert('Prueba creada con éxito.', 'success');
-        }
-        await fetchTrials(currentLocationIdTrialInput.value, currentLocationNameSpan.textContent);
-    } catch (error) {
-        console.error('Error al guardar la prueba:', error);
-        showAlert('Error al guardar la prueba.', 'error');
-    }
-}
-
-async function viewTrial(trialId) {
-    trialFormTitle.textContent = 'Editar Prueba';
-    showSection(trialFormSection);
-    try {
-        const {
-            data,
-            error
-        } = await supabase.from('trials').select('*').eq('id', trialId).single();
-        if (error) throw error;
-        fillTrialForm(data);
-        showTrialSpecificFields();
-    } catch (error) {
-        console.error('Error al cargar la prueba:', error);
-        showAlert('Error al cargar la prueba.', 'error');
-    }
-}
-
-function fillTrialForm(trial) {
-    resetForm(trialForm); // Asegurarse de limpiar primero
-
-    trialIdInput.value = trial.id;
-    currentLocationIdTrialInput.value = trial.location_id;
-    trialNameInput.value = trial.title;
-    trialTypeInput.value = trial.type;
-    trialOrderIndexInput.value = trial.order_index;
-    trialNarrativeInput.value = trial.narrative;
-    trialImageUrlInput.value = trial.image_url;
-    trialAudioUrlInput.value = trial.audio_url;
-    trialHintCountInput.value = trial.hint_count;
-    trialHintCostInput.value = trial.hint_cost;
-
-    // Llenar campos específicos
-    if (trial.type === 'qr') {
-        qrContentInput.value = trial.qr_content;
-    } else if (trial.type === 'gps') {
-        gpsLatitudeInput.value = trial.gps_latitude;
-        gpsLongitudeInput.value = trial.gps_longitude;
-        gpsToleranceInput.value = trial.gps_tolerance;
-    } else if (trial.type === 'text') {
-        textQuestionInput.value = trial.question;
-        textAnswerTypeInput.value = trial.answer_type;
-        if (trial.answer_type === 'single_choice' || trial.answer_type === 'numeric') {
-            textCorrectAnswerSingleNumericInput.value = trial.correct_answer;
-        } else if (trial.answer_type === 'multiple_options' || trial.answer_type === 'ordering') {
-            textOptionsInput.value = trial.options ? trial.options.join(';') : '';
-            textCorrectAnswerMultiOrderingInput.value = trial.correct_answer;
-        }
-        // Llenar campos de multi-ruta
-        if (trial.answer_type === 'multiple_options') {
-            // Llamamos a la función para generar los selects de nuevo
-            populateMultiPathOptions().then(() => {
-                if (trial.multi_path_options) {
-                    for (const option in trial.multi_path_options) {
-                        // Corregimos la selección para buscar elementos <select>
-                        const select = multiPathList.querySelector(`select[data-option="${option}"]`);
-                        if (select) {
-                            select.value = trial.multi_path_options[option];
-                        }
-                    }
-                }
-            });
-        }
-    }
-    showTrialSpecificFields();
-}
-
-// Función para generar los campos de multi-ruta dinámicamente
-async function populateMultiPathOptions() {
-    multiPathList.innerHTML = ''; // Limpiar el contenedor
-    const optionsText = textOptionsInput.value;
-    const options = optionsText ? optionsText.split(';').map(s => s.trim()) : [];
-
-    // Ocultar los campos de ruta si no hay opciones
-    if (options.length === 0) {
-        multiPathFields.classList.add('hidden');
-        return;
-    }
-
-    try {
-        const { data: locations, error } = await supabase.from('locations').select('id, name').eq('game_id', current_game_id);
-        if (error) throw error;
-
-        options.forEach(option => {
-            const div = document.createElement('div');
-            div.classList.add('form-field');
-
-            const label = document.createElement('label');
-            label.textContent = `Si la respuesta es '${option}', ir a la ubicación:`;
-
-            const select = document.createElement('select');
-            select.setAttribute('data-option', option);
-
-            // Opción por defecto
-            const defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.textContent = 'Selecciona una ubicación';
-            select.appendChild(defaultOption);
-
-            locations.forEach(location => {
-                const optionElement = document.createElement('option');
-                optionElement.value = location.id;
-                optionElement.textContent = location.name;
-                select.appendChild(optionElement);
-            });
-
-            div.appendChild(label);
-            div.appendChild(select);
-            multiPathList.appendChild(div);
-        });
-    } catch (error) {
-        console.error('Error al cargar las ubicaciones para la multi-ruta:', error);
-        showAlert('Error al cargar las ubicaciones para la multi-ruta.', 'error');
-    }
-}
-
-
-// --- Funciones de renderizado (no se modifican para esta característica) ---
-function renderGamesList(games) {
+function renderGameList(games) {
+    const gameListDiv = document.getElementById('game-list');
     gameListDiv.innerHTML = '';
     if (games.length === 0) {
-        gameListDiv.innerHTML = '<p>No hay juegos creados. ¡Crea el primero!</p>';
+        gameListDiv.innerHTML = '<p>No hay juegos creados aún.</p>';
         return;
     }
     games.forEach(game => {
-        const item = document.createElement('div');
-        item.classList.add('list-item');
-        item.innerHTML = `
-            <span>${game.title} (${game.adventure_type})</span>
-            <div class="list-actions">
-                <button class="edit-button" onclick="viewGame('${game.id}')">Editar</button>
-                <button class="view-button" onclick="viewLocations('${game.id}', '${game.title}', '${game.adventure_type}')">Ubicaciones</button>
+        const gameItem = document.createElement('div');
+        gameItem.className = 'item-card';
+        gameItem.innerHTML = `
+            <h3>${game.title}</h3>
+            <p>${game.adventure_type === 'linear' ? 'Aventura Lineal' : 'Aventura Seleccionable'}</p>
+            <div class="item-actions">
+                <button class="edit-button" data-id="${game.id}">Editar</button>
+                <button class="view-locations-button" data-id="${game.id}" data-name="${game.title}" data-type="${game.adventure_type}">Ver Ubicaciones</button>
+                <button class="delete-button" data-id="${game.id}">Eliminar</button>
             </div>
         `;
-        gameListDiv.appendChild(item);
+        gameListDiv.appendChild(gameItem);
     });
 }
 
-function renderLocationsList(locations) {
+async function saveGame() {
+    const gameId = document.getElementById('game-id').value;
+    const title = document.getElementById('game-title').value;
+    const description = document.getElementById('game-description').value;
+    const mechanics = document.getElementById('game-mechanics').value;
+    const initialNarrative = document.getElementById('game-initial-narrative').value;
+    const imageUrl = document.getElementById('game-image-url').value;
+    const audioUrl = document.getElementById('game-audio-url').value;
+    const adventureType = document.getElementById('game-adventure-type').value;
+    const initialScorePerTrial = parseInt(document.getElementById('game-initial-score-per-trial').value);
+    const isActive = document.getElementById('game-is-active').checked;
+
+    const gameData = {
+        title,
+        description,
+        mechanics,
+        initial_narrative: initialNarrative,
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        adventure_type: adventureType,
+        initial_score_per_trial: initialScorePerTrial,
+        is_active: isActive,
+    };
+
+    try {
+        let result;
+        if (gameId) {
+            result = await supabase.from('games').update(gameData).eq('id', gameId);
+        } else {
+            result = await supabase.from('games').insert([gameData]);
+        }
+
+        if (result.error) throw result.error;
+        showAlert('Juego guardado con éxito', 'success');
+        viewGames();
+    } catch (err) {
+        console.error('Error al guardar el juego:', err.message);
+        showAlert('Error al guardar el juego.', 'error');
+    }
+}
+
+// ----------------------------------------------------
+// Lógica de Ubicaciones
+// ----------------------------------------------------
+async function viewLocations(gameId, gameName, adventureType) {
+    current_game_id = gameId;
+    current_game_name = gameName;
+    current_game_adventure_type = adventureType;
+    document.getElementById('current-game-name').textContent = gameName;
+    document.querySelector('#location-form-section .game-name-display').textContent = ` - ${gameName}`;
+    document.querySelector('#trial-list-section .game-name-display').textContent = ` - ${gameName}`;
+    document.querySelector('#trial-form-section .game-name-display').textContent = ` - ${gameName}`;
+
+    showSection(locationListSection);
+    const locationListDiv = document.getElementById('location-list');
+    locationListDiv.innerHTML = '<p>Cargando ubicaciones...</p>';
+    try {
+        const { data, error } = await supabase
+            .from('locations')
+            .select('*')
+            .eq('game_id', gameId)
+            .order('order_index', { ascending: true });
+
+        if (error) throw error;
+        all_locations_for_current_game = data; // Almacenar todas las ubicaciones
+        renderLocationList(data);
+    } catch (err) {
+        console.error('Error cargando ubicaciones:', err.message);
+        locationListDiv.innerHTML = '<p class="error">Error al cargar las ubicaciones.</p>';
+    }
+}
+
+function renderLocationList(locations) {
+    const locationListDiv = document.getElementById('location-list');
     locationListDiv.innerHTML = '';
     if (locations.length === 0) {
         locationListDiv.innerHTML = '<p>No hay ubicaciones creadas para este juego.</p>';
         return;
     }
     locations.forEach(location => {
-        const item = document.createElement('div');
-        item.classList.add('list-item');
-        item.innerHTML = `
-            <span>${location.order_index}. ${location.name}</span>
-            <div class="list-actions">
-                <button class="edit-button" onclick="viewLocation('${location.id}')">Editar</button>
-                <button class="view-button" onclick="viewTrials('${location.id}', '${location.name}')">Pruebas</button>
-                <button class="delete-button" onclick="deleteLocation('${location.id}')">Eliminar</button>
+        const locationItem = document.createElement('div');
+        locationItem.className = 'item-card';
+        locationItem.innerHTML = `
+            <h3>${location.order_index}. ${location.name}</h3>
+            <p>Lat: ${location.latitude.toFixed(4)}, Lon: ${location.longitude.toFixed(4)}</p>
+            <div class="item-actions">
+                <button class="edit-button" data-id="${location.id}">Editar</button>
+                <button class="view-trials-button" data-id="${location.id}" data-name="${location.name}" data-is-selectable="${location.is_selectable_trials}">Ver Pruebas</button>
+                <button class="delete-button" data-id="${location.id}">Eliminar</button>
             </div>
         `;
-        locationListDiv.appendChild(item);
+        locationListDiv.appendChild(locationItem);
     });
 }
 
-function renderTrialsList(trials, gameAdventureType) {
+async function saveLocation() {
+    const locationId = document.getElementById('location-id').value;
+    const gameId = current_game_id;
+    const name = document.getElementById('location-name').value;
+    const orderIndex = parseInt(document.getElementById('location-order-index').value);
+    const initialNarrative = document.getElementById('location-initial-narrative').value;
+    const imageUrl = document.getElementById('location-image-url').value;
+    const audioUrl = document.getElementById('location-audio-url').value;
+    const preArrivalNarrative = document.getElementById('pre-arrival-narrative').value;
+    const isSelectableTrials = document.getElementById('location-is-selectable-trials').checked;
+    const latitude = parseFloat(document.getElementById('location-latitude').value);
+    const longitude = parseFloat(document.getElementById('location-longitude').value);
+    const tolerance = parseInt(document.getElementById('location-tolerance').value);
+
+    const locationData = {
+        game_id: gameId,
+        name,
+        order_index: orderIndex,
+        initial_narrative: initialNarrative,
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        pre_arrival_narrative: preArrivalNarrative,
+        is_selectable_trials: isSelectableTrials,
+        latitude,
+        longitude,
+        tolerance
+    };
+
+    try {
+        let result;
+        if (locationId) {
+            result = await supabase.from('locations').update(locationData).eq('id', locationId);
+        } else {
+            result = await supabase.from('locations').insert([locationData]);
+        }
+
+        if (result.error) throw result.error;
+        showAlert('Ubicación guardada con éxito', 'success');
+        viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+    } catch (err) {
+        console.error('Error al guardar la ubicación:', err.message);
+        showAlert('Error al guardar la ubicación.', 'error');
+    }
+}
+
+function initLocationMap(lat = 40.416775, lon = -3.703790) {
+    if (locationMap) {
+        locationMap.remove();
+    }
+    locationMap = L.map('location-map').setView([lat, lon], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(locationMap);
+
+    locationMapMarker = L.marker([lat, lon]).addTo(locationMap);
+
+    locationMap.on('click', function(e) {
+        const { lat, lng } = e.latlng;
+        document.getElementById('location-latitude').value = lat.toFixed(6);
+        document.getElementById('location-longitude').value = lng.toFixed(6);
+        locationMapMarker.setLatLng([lat, lng]);
+    });
+}
+
+function getCurrentLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+            const { latitude, longitude } = position.coords;
+            initLocationMap(latitude, longitude);
+            document.getElementById('location-latitude').value = latitude.toFixed(6);
+            document.getElementById('location-longitude').value = longitude.toFixed(6);
+        }, (error) => {
+            console.error("Error al obtener la ubicación:", error);
+            showAlert("No se pudo obtener la ubicación actual. Por favor, introduce las coordenadas manualmente.", 'warning');
+        });
+    } else {
+        showAlert("La geolocalización no es compatible con este navegador.", 'error');
+    }
+}
+
+// ----------------------------------------------------
+// Lógica de Pruebas
+// ----------------------------------------------------
+async function viewTrials(locationId, locationName, isSelectableTrials) {
+    current_location_id = locationId;
+    current_location_name = locationName;
+    current_location_is_selectable_trials = isSelectableTrials;
+    document.getElementById('current-location-name').textContent = locationName;
+    document.querySelector('#trial-form-section h2 #current-location-name').textContent = ` | ${locationName}`;
+
+    showSection(trialListSection);
+    const trialListDiv = document.getElementById('trial-list');
+    trialListDiv.innerHTML = '<p>Cargando pruebas...</p>';
+    try {
+        const { data, error } = await supabase
+            .from('trials')
+            .select('*')
+            .eq('location_id', locationId)
+            .order('order_index', { ascending: true });
+
+        if (error) throw error;
+        renderTrialList(data);
+    } catch (err) {
+        console.error('Error cargando pruebas:', err.message);
+        trialListDiv.innerHTML = '<p class="error">Error al cargar las pruebas.</p>';
+    }
+}
+
+function renderTrialList(trials) {
+    const trialListDiv = document.getElementById('trial-list');
     trialListDiv.innerHTML = '';
     if (trials.length === 0) {
         trialListDiv.innerHTML = '<p>No hay pruebas creadas para esta ubicación.</p>';
         return;
     }
     trials.forEach(trial => {
-        const item = document.createElement('div');
-        item.classList.add('list-item');
-        item.innerHTML = `
-            <span>${trial.order_index}. ${trial.title} (${trial.type})</span>
-            <div class="list-actions">
-                <button class="edit-button" onclick="viewTrial('${trial.id}')">Editar</button>
-                <button class="delete-button" onclick="deleteTrial('${trial.id}')">Eliminar</button>
+        const trialItem = document.createElement('div');
+        trialItem.className = 'item-card';
+        trialItem.innerHTML = `
+            <h3>${trial.order_index}. ${trial.name}</h3>
+            <p>Tipo: ${trial.type}</p>
+            <div class="item-actions">
+                <button class="edit-button" data-id="${trial.id}">Editar</button>
+                <button class="delete-button" data-id="${trial.id}">Eliminar</button>
             </div>
         `;
-        trialListDiv.appendChild(item);
+        trialListDiv.appendChild(trialItem);
     });
+}
+
+function showTrialSpecificFields() {
+    trialSpecificFields.forEach(f => f.classList.add('hidden'));
+    const trialType = trialTypeInput.value;
+    switch (trialType) {
+        case 'text':
+            document.getElementById('text-fields').classList.remove('hidden');
+            break;
+        case 'qr':
+            document.getElementById('qr-fields').classList.remove('hidden');
+            break;
+        case 'gps':
+            document.getElementById('gps-fields').classList.remove('hidden');
+            break;
+    }
+}
+
+function showTextAnswerTypeFields() {
+    singleNumericAnswerFields.classList.add('hidden');
+    multiOrderingAnswerFields.classList.add('hidden');
+    multiPathFields.classList.add('hidden');
+    const answerType = document.getElementById('text-answer-type').value;
+
+    switch (answerType) {
+        case 'single_choice':
+        case 'numeric':
+            singleNumericAnswerFields.classList.remove('hidden');
+            break;
+        case 'multiple_options':
+        case 'ordering':
+            multiOrderingAnswerFields.classList.remove('hidden');
+            // Si es multi-opción o ordenación, mostrar las rutas alternativas
+            multiPathFields.classList.remove('hidden');
+            renderMultiPathFields();
+            break;
+    }
+}
+
+function renderMultiPathFields() {
+    const optionsText = trialOptionsTextarea.value;
+    const options = optionsText.split(';').map(o => o.trim()).filter(o => o);
+    multiPathListDiv.innerHTML = '';
+    if (options.length === 0) {
+        multiPathHelpText.textContent = "Introduce las opciones para generar los campos de ruta.";
+        return;
+    }
+
+    multiPathHelpText.textContent = "Define la ubicación a la que se moverá el jugador dependiendo de la opción elegida.";
+
+    const nextLocationOptions = all_locations_for_current_game
+        .filter(loc => loc.id !== current_location_id)
+        .map(loc => `<option value="${loc.id}">${loc.order_index}. ${loc.name}</option>`)
+        .join('');
+
+    options.forEach((option, index) => {
+        const div = document.createElement('div');
+        div.className = 'multi-path-item';
+        div.innerHTML = `
+            <label for="path-option-${index}">Si la respuesta es <strong>"${option}"</strong>, ir a:</label>
+            <select id="path-option-${index}" class="path-option-select">
+                <option value="">(No cambiar ubicación)</option>
+                ${nextLocationOptions}
+            </select>
+        `;
+        multiPathListDiv.appendChild(div);
+    });
+}
+
+
+async function saveTrial() {
+    const trialId = document.getElementById('trial-id').value;
+    const locationId = current_location_id;
+    const name = document.getElementById('trial-name').value;
+    const type = document.getElementById('trial-type').value;
+    const orderIndex = parseInt(document.getElementById('trial-order-index').value);
+    const narrative = document.getElementById('trial-narrative').value;
+    const imageUrl = document.getElementById('trial-image-url').value;
+    const audioUrl = document.getElementById('trial-audio-url').value;
+    const hintCount = parseInt(document.getElementById('trial-hint-count').value);
+    const hint1 = document.getElementById('hint1').value;
+    const hint2 = document.getElementById('hint2').value;
+    const hint3 = document.getElementById('hint3').value;
+    const hintCost = parseInt(document.getElementById('trial-hint-cost').value);
+
+    let trialData = {
+        location_id: locationId,
+        name,
+        type,
+        order_index: orderIndex,
+        narrative,
+        image_url: imageUrl,
+        audio_url: audioUrl,
+        hint_count: hintCount,
+        hints: JSON.stringify([hint1, hint2, hint3]),
+        hint_cost: hintCost,
+        correct_answer: null,
+        options: null,
+        alternative_routes: null,
+    };
+
+    switch (type) {
+        case 'text':
+            const textAnswerType = document.getElementById('text-answer-type').value;
+            trialData.answer_type = textAnswerType;
+            if (['multiple_options', 'ordering'].includes(textAnswerType)) {
+                trialData.options = document.getElementById('text-options').value.split(';').map(o => o.trim());
+                trialData.correct_answer = document.getElementById('text-correct-answer-multi-ordering').value;
+                
+                // Recopilar las rutas alternativas
+                const alternativeRoutes = {};
+                const options = trialData.options;
+                options.forEach((option, index) => {
+                    const selectElement = document.getElementById(`path-option-${index}`);
+                    if (selectElement && selectElement.value) {
+                        alternativeRoutes[option] = selectElement.value;
+                    }
+                });
+                trialData.alternative_routes = JSON.stringify(alternativeRoutes);
+
+            } else {
+                trialData.correct_answer = document.getElementById('text-correct-answer-single-numeric').value;
+            }
+            break;
+        case 'qr':
+            trialData.correct_answer = document.getElementById('qr-content').value;
+            break;
+        case 'gps':
+            trialData.latitude = parseFloat(document.getElementById('gps-latitude').value);
+            trialData.longitude = parseFloat(document.getElementById('gps-longitude').value);
+            trialData.tolerance = parseInt(document.getElementById('gps-tolerance').value);
+            break;
+    }
+
+    try {
+        let result;
+        if (trialId) {
+            result = await supabase.from('trials').update(trialData).eq('id', trialId);
+        } else {
+            result = await supabase.from('trials').insert([trialData]);
+        }
+
+        if (result.error) throw result.error;
+        showAlert('Prueba guardada con éxito', 'success');
+        viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
+    } catch (err) {
+        console.error('Error al guardar la prueba:', err.message);
+        showAlert('Error al guardar la prueba.', 'error');
+    }
+}
+
+// ----------------------------------------------------
+// Lógica de Supabase
+// ----------------------------------------------------
+document.addEventListener('DOMContentLoaded', () => {
+    // Escuchadores de eventos para la navegación
+    gameForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveGame();
+    });
+    locationForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveLocation();
+    });
+    trialForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        saveTrial();
+    });
+
+    createGameBtn.addEventListener('click', () => {
+        resetForm(gameForm);
+        document.getElementById('form-title').textContent = 'Crear Nuevo Juego';
+        showSection(gameFormSection);
+    });
+    cancelGameBtn.addEventListener('click', () => {
+        resetForm(gameForm);
+        showSection(gameListSection);
+    });
+    backToGamesBtn.addEventListener('click', () => {
+        current_game_id = null;
+        current_game_name = null;
+        current_game_adventure_type = null;
+        showSection(gameListSection);
+        viewGames();
+    });
+
+    addLocationBtn.addEventListener('click', () => {
+        resetForm(locationForm);
+        document.getElementById('location-form-title').textContent = 'Crear Nueva Ubicación';
+        showSection(locationFormSection);
+        initLocationMap();
+    });
+    cancelLocationBtn.addEventListener('click', () => {
+        resetForm(locationForm);
+        showSection(locationListSection);
+    });
+    backToLocationsBtn.addEventListener('click', () => {
+        current_location_id = null;
+        current_location_name = null;
+        current_location_is_selectable_trials = null;
+        showSection(locationListSection);
+        viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+    });
+
+    getCurrentLocationBtn.addEventListener('click', getCurrentLocation);
+
+    addTrialBtn.addEventListener('click', () => {
+        resetForm(trialForm);
+        document.getElementById('trial-form-title').textContent = 'Crear Nueva Prueba';
+        showSection(trialFormSection);
+        showTrialSpecificFields();
+    });
+    cancelTrialBtn.addEventListener('click', () => {
+        resetForm(trialForm);
+        showSection(trialListSection);
+    });
+
+    // Delegación de eventos para botones dinámicos
+    gameListSection.addEventListener('click', (e) => {
+        if (e.target.classList.contains('view-locations-button')) {
+            const { id, name, type } = e.target.dataset;
+            viewLocations(id, name, type);
+        } else if (e.target.classList.contains('edit-button')) {
+            const gameId = e.target.dataset.id;
+            editGame(gameId);
+        } else if (e.target.classList.contains('delete-button')) {
+            const gameId = e.target.dataset.id;
+            deleteGame(gameId);
+        }
+    });
+
+    locationListSection.addEventListener('click', (e) => {
+        if (e.target.classList.contains('view-trials-button')) {
+            const { id, name, isSelectable } = e.target.dataset;
+            viewTrials(id, name, isSelectable === 'true');
+        } else if (e.target.classList.contains('edit-button')) {
+            const locationId = e.target.dataset.id;
+            editLocation(locationId);
+        } else if (e.target.classList.contains('delete-button')) {
+            const locationId = e.target.dataset.id;
+            deleteLocation(locationId);
+        }
+    });
+
+    trialListSection.addEventListener('click', (e) => {
+        if (e.target.classList.contains('edit-button')) {
+            const trialId = e.target.dataset.id;
+            editTrial(trialId);
+        } else if (e.target.classList.contains('delete-button')) {
+            const trialId = e.target.dataset.id;
+            deleteTrial(trialId);
+        }
+    });
+
+    // Escuchadores de eventos para campos de formulario de prueba
+    trialTypeInput.addEventListener('change', showTrialSpecificFields);
+    document.getElementById('text-answer-type').addEventListener('change', showTextAnswerTypeFields);
+    trialOptionsTextarea.addEventListener('input', renderMultiPathFields);
+
+    // Funciones de edición
+    async function editGame(gameId) {
+        try {
+            const { data, error } = await supabase
+                .from('games')
+                .select('*')
+                .eq('id', gameId)
+                .single();
+            if (error) throw error;
+            document.getElementById('form-title').textContent = 'Editar Juego';
+            document.getElementById('game-id').value = data.id;
+            document.getElementById('game-title').value = data.title;
+            document.getElementById('game-description').value = data.description;
+            document.getElementById('game-mechanics').value = data.mechanics;
+            document.getElementById('game-initial-narrative').value = data.initial_narrative;
+            document.getElementById('game-image-url').value = data.image_url;
+            document.getElementById('game-audio-url').value = data.audio_url;
+            document.getElementById('game-adventure-type').value = data.adventure_type;
+            document.getElementById('game-initial-score-per-trial').value = data.initial_score_per_trial;
+            document.getElementById('game-is-active').checked = data.is_active;
+            showSection(gameFormSection);
+        } catch (err) {
+            console.error('Error al cargar juego para editar:', err.message);
+            showAlert('Error al cargar el juego.', 'error');
+        }
+    }
+
+    async function editLocation(locationId) {
+        try {
+            const { data, error } = await supabase
+                .from('locations')
+                .select('*')
+                .eq('id', locationId)
+                .single();
+            if (error) throw error;
+            document.getElementById('location-form-title').textContent = 'Editar Ubicación';
+            document.getElementById('location-id').value = data.id;
+            document.getElementById('current-game-id-location').value = data.game_id;
+            document.getElementById('location-name').value = data.name;
+            document.getElementById('location-order-index').value = data.order_index;
+            document.getElementById('location-initial-narrative').value = data.initial_narrative;
+            document.getElementById('location-image-url').value = data.image_url;
+            document.getElementById('location-audio-url').value = data.audio_url;
+            document.getElementById('pre-arrival-narrative').value = data.pre_arrival_narrative;
+            document.getElementById('location-is-selectable-trials').checked = data.is_selectable_trials;
+            document.getElementById('location-latitude').value = data.latitude;
+            document.getElementById('location-longitude').value = data.longitude;
+            document.getElementById('location-tolerance').value = data.tolerance;
+            showSection(locationFormSection);
+            initLocationMap(data.latitude, data.longitude);
+        } catch (err) {
+            console.error('Error al cargar ubicación para editar:', err.message);
+            showAlert('Error al cargar la ubicación.', 'error');
+        }
+    }
+
+    async function editTrial(trialId) {
+        try {
+            const { data, error } = await supabase
+                .from('trials')
+                .select('*')
+                .eq('id', trialId)
+                .single();
+            if (error) throw error;
+            document.getElementById('trial-form-title').textContent = 'Editar Prueba';
+            document.getElementById('trial-id').value = data.id;
+            document.getElementById('current-location-id-trial').value = data.location_id;
+            document.getElementById('trial-name').value = data.name;
+            document.getElementById('trial-type').value = data.type;
+            document.getElementById('trial-order-index').value = data.order_index;
+            document.getElementById('trial-narrative').value = data.narrative;
+            document.getElementById('trial-image-url').value = data.image_url;
+            document.getElementById('trial-audio-url').value = data.audio_url;
+            document.getElementById('trial-hint-count').value = data.hint_count;
+            const hints = JSON.parse(data.hints);
+            if (hints) {
+                document.getElementById('hint1').value = hints[0] || '';
+                document.getElementById('hint2').value = hints[1] || '';
+                document.getElementById('hint3').value = hints[2] || '';
+            }
+            document.getElementById('trial-hint-cost').value = data.hint_cost;
+            
+            showTrialSpecificFields();
+
+            // Rellenar campos específicos del tipo de prueba
+            switch (data.type) {
+                case 'text':
+                    document.getElementById('text-answer-type').value = data.answer_type;
+                    showTextAnswerTypeFields();
+                    if (['multiple_options', 'ordering'].includes(data.answer_type)) {
+                        document.getElementById('text-options').value = data.options.join(';');
+                        document.getElementById('text-correct-answer-multi-ordering').value = data.correct_answer;
+                        renderMultiPathFields();
+                        // Rellenar las rutas alternativas
+                        const alternativeRoutes = JSON.parse(data.alternative_routes);
+                        if (alternativeRoutes) {
+                            const options = data.options;
+                            options.forEach((option, index) => {
+                                const selectElement = document.getElementById(`path-option-${index}`);
+                                if (selectElement) {
+                                    selectElement.value = alternativeRoutes[option] || '';
+                                }
+                            });
+                        }
+                    } else {
+                        document.getElementById('text-correct-answer-single-numeric').value = data.correct_answer;
+                    }
+                    break;
+                case 'qr':
+                    document.getElementById('qr-content').value = data.correct_answer;
+                    break;
+                case 'gps':
+                    document.getElementById('gps-latitude').value = data.latitude;
+                    document.getElementById('gps-longitude').value = data.longitude;
+                    document.getElementById('gps-tolerance').value = data.tolerance;
+                    break;
+            }
+
+            showSection(trialFormSection);
+        } catch (err) {
+            console.error('Error al cargar prueba para editar:', err.message);
+            showAlert('Error al cargar la prueba.', 'error');
+        }
+    }
+
+
+    // Funciones de eliminación
+    async function deleteGame(gameId) {
+        if (confirm('¿Estás seguro de que quieres eliminar este juego y todas sus ubicaciones y pruebas?')) {
+            try {
+                const { error } = await supabase.from('games').delete().eq('id', gameId);
+                if (error) throw error;
+                showAlert('Juego eliminado con éxito.', 'success');
+                viewGames();
+            } catch (err) {
+                console.error('Error al eliminar juego:', err.message);
+                showAlert('Error al eliminar el juego.', 'error');
+            }
+        }
+    }
+
+    async function deleteLocation(locationId) {
+        if (confirm('¿Estás seguro de que quieres eliminar esta ubicación y todas sus pruebas?')) {
+            try {
+                const { error } = await supabase.from('locations').delete().eq('id', locationId);
+                if (error) throw error;
+                showAlert('Ubicación eliminada con éxito.', 'success');
+                viewLocations(current_game_id, current_game_name, current_game_adventure_type);
+            } catch (err) {
+                console.error('Error al eliminar ubicación:', err.message);
+                showAlert('Error al eliminar la ubicación.', 'error');
+            }
+        }
+    }
+
+    async function deleteTrial(trialId) {
+        if (confirm('¿Estás seguro de que quieres eliminar esta prueba?')) {
+            try {
+                const { error } = await supabase.from('trials').delete().eq('id', trialId);
+                if (error) throw error;
+                showAlert('Prueba eliminada con éxito.', 'success');
+                viewTrials(current_location_id, current_location_name, current_location_is_selectable_trials);
+            } catch (err) {
+                console.error('Error al eliminar prueba:', err.message);
+                showAlert('Error al eliminar la prueba.', 'error');
+            }
+        }
+    }
+
+    // Inicialización
+    viewGames();
+});
+
+// Función de utilidad para mostrar alertas (copia de shared/utils.js para evitar complejidad de módulos)
+function showAlert(message, type = 'info') {
+    let alertDiv = document.getElementById('app-alert');
+    if (!alertDiv) {
+        alertDiv = document.createElement('div');
+        alertDiv.id = 'app-alert';
+        document.body.appendChild(alertDiv);
+    }
+
+    alertDiv.textContent = message;
+    alertDiv.className = `app-alert ${type}`;
+    alertDiv.style.display = 'block';
+
+    setTimeout(() => {
+        alertDiv.style.display = 'none';
+    }, 3000);
 }
