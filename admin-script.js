@@ -59,7 +59,10 @@ function showSection(section) {
 
 function resetForm(form) {
     form.reset();
-    form.querySelector('input[type="hidden"]').value = '';
+    const idInput = form.querySelector('input[type="hidden"]');
+    if (idInput) {
+        idInput.value = '';
+    }
     // Ocultar campos específicos de prueba al resetear
     trialSpecificFields.forEach(f => f.classList.add('hidden'));
 }
@@ -390,7 +393,6 @@ function renderMultiPathFields() {
     const defaultCorrectAnswerOption = `<option value="">(Ubicación de la siguiente prueba)</option>`;
     const fullNextLocationOptions = defaultCorrectAnswerOption + nextLocationOptions;
 
-
     options.forEach((option, index) => {
         const div = document.createElement('div');
         div.className = 'multi-path-item';
@@ -406,8 +408,13 @@ function renderMultiPathFields() {
 
 
 async function saveTrial() {
+    const locationId = document.getElementById('current-location-id-trial').value;
+    if (!locationId) {
+        showAlert('Error: Debes seleccionar una ubicación antes de guardar una prueba.', 'error');
+        return;
+    }
+
     const trialId = document.getElementById('trial-id').value;
-    const locationId = current_location_id;
     const name = document.getElementById('trial-name').value;
     const type = document.getElementById('trial-type').value;
     const orderIndex = parseInt(document.getElementById('trial-order-index').value);
@@ -429,11 +436,15 @@ async function saveTrial() {
         image_url: imageUrl,
         audio_url: audioUrl,
         hint_count: hintCount,
-        hints: JSON.stringify([hint1, hint2, hint3]),
+        // CORRECCIÓN: Guardar las pistas en sus columnas separadas
+        hint1: hint1,
+        hint2: hint2,
+        hint3: hint3,
         hint_cost: hintCost,
         correct_answer: null,
         options: null,
         alternative_routes: null,
+        has_alternative_path: false // CORRECCIÓN: Campo para la base de datos del usuario
     };
 
     switch (type) {
@@ -452,17 +463,19 @@ async function saveTrial() {
                 
                 // Recopilar las rutas alternativas
                 const alternativeRoutes = {};
+                let hasAlternativePath = false; // Bandera para el campo 'has_alternative_path'
                 options.forEach((option, index) => {
                     const selectElement = document.getElementById(`path-option-${index}`);
                     if (selectElement && selectElement.value) {
                         alternativeRoutes[option] = selectElement.value;
+                        hasAlternativePath = true;
                     }
                 });
-                // Guardar como JSON string solo si hay rutas alternativas
+                
                 if (Object.keys(alternativeRoutes).length > 0) {
                     trialData.alternative_routes = JSON.stringify(alternativeRoutes);
                 }
-
+                trialData.has_alternative_path = hasAlternativePath; // Asignar el valor final
             } else {
                 trialData.correct_answer = document.getElementById('text-correct-answer-single-numeric').value;
             }
@@ -676,12 +689,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('trial-image-url').value = data.image_url;
             document.getElementById('trial-audio-url').value = data.audio_url;
             document.getElementById('trial-hint-count').value = data.hint_count;
-            const hints = JSON.parse(data.hints);
-            if (hints) {
-                document.getElementById('hint1').value = hints[0] || '';
-                document.getElementById('hint2').value = hints[1] || '';
-                document.getElementById('hint3').value = hints[2] || '';
-            }
+            
+            // CORRECCIÓN: Rellenar las pistas desde las columnas separadas
+            document.getElementById('hint1').value = data.hint1 || '';
+            document.getElementById('hint2').value = data.hint2 || '';
+            document.getElementById('hint3').value = data.hint3 || '';
+            
             document.getElementById('trial-hint-cost').value = data.hint_cost;
             
             showTrialSpecificFields();
@@ -692,13 +705,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.getElementById('text-answer-type').value = data.answer_type;
                     showTextAnswerTypeFields();
                     if (['multiple_options', 'ordering'].includes(data.answer_type)) {
-                        document.getElementById('text-options').value = data.options.join(';');
+                        // Manejar opciones
+                        const options = data.options ? JSON.parse(data.options) : [];
+                        document.getElementById('text-options').value = options.join(';');
                         document.getElementById('text-correct-answer-multi-ordering').value = data.correct_answer;
                         renderMultiPathFields();
+                        
                         // Rellenar las rutas alternativas
                         if (data.alternative_routes) {
                             const alternativeRoutes = JSON.parse(data.alternative_routes);
-                            const options = JSON.parse(data.options);
                             options.forEach((option, index) => {
                                 const selectElement = document.getElementById(`path-option-${index}`);
                                 if (selectElement) {
