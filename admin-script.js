@@ -339,6 +339,7 @@ function showTrialSpecificFields() {
     switch (trialType) {
         case 'text':
             document.getElementById('text-fields').classList.remove('hidden');
+            showTextAnswerTypeFields();
             break;
         case 'qr':
             document.getElementById('qr-fields').classList.remove('hidden');
@@ -363,7 +364,6 @@ function showTextAnswerTypeFields() {
         case 'multiple_options':
         case 'ordering':
             multiOrderingAnswerFields.classList.remove('hidden');
-            // Si es multi-opción o ordenación, mostrar las rutas alternativas
             multiPathFields.classList.remove('hidden');
             renderMultiPathFields();
             break;
@@ -385,6 +385,11 @@ function renderMultiPathFields() {
         .filter(loc => loc.id !== current_location_id)
         .map(loc => `<option value="${loc.id}">${loc.order_index}. ${loc.name}</option>`)
         .join('');
+    
+    // Añadir una opción predeterminada para el destino de la respuesta correcta
+    const defaultCorrectAnswerOption = `<option value="">(Ubicación de la siguiente prueba)</option>`;
+    const fullNextLocationOptions = defaultCorrectAnswerOption + nextLocationOptions;
+
 
     options.forEach((option, index) => {
         const div = document.createElement('div');
@@ -392,8 +397,7 @@ function renderMultiPathFields() {
         div.innerHTML = `
             <label for="path-option-${index}">Si la respuesta es <strong>"${option}"</strong>, ir a:</label>
             <select id="path-option-${index}" class="path-option-select">
-                <option value="">(No cambiar ubicación)</option>
-                ${nextLocationOptions}
+                ${fullNextLocationOptions}
             </select>
         `;
         multiPathListDiv.appendChild(div);
@@ -437,19 +441,27 @@ async function saveTrial() {
             const textAnswerType = document.getElementById('text-answer-type').value;
             trialData.answer_type = textAnswerType;
             if (['multiple_options', 'ordering'].includes(textAnswerType)) {
-                trialData.options = document.getElementById('text-options').value.split(';').map(o => o.trim());
+                const optionsText = document.getElementById('text-options').value;
+                if (!optionsText) {
+                     showAlert('Las opciones no pueden estar vacías.', 'error');
+                     return;
+                }
+                const options = optionsText.split(';').map(o => o.trim()).filter(o => o);
+                trialData.options = JSON.stringify(options);
                 trialData.correct_answer = document.getElementById('text-correct-answer-multi-ordering').value;
                 
                 // Recopilar las rutas alternativas
                 const alternativeRoutes = {};
-                const options = trialData.options;
                 options.forEach((option, index) => {
                     const selectElement = document.getElementById(`path-option-${index}`);
                     if (selectElement && selectElement.value) {
                         alternativeRoutes[option] = selectElement.value;
                     }
                 });
-                trialData.alternative_routes = JSON.stringify(alternativeRoutes);
+                // Guardar como JSON string solo si hay rutas alternativas
+                if (Object.keys(alternativeRoutes).length > 0) {
+                    trialData.alternative_routes = JSON.stringify(alternativeRoutes);
+                }
 
             } else {
                 trialData.correct_answer = document.getElementById('text-correct-answer-single-numeric').value;
@@ -684,9 +696,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         document.getElementById('text-correct-answer-multi-ordering').value = data.correct_answer;
                         renderMultiPathFields();
                         // Rellenar las rutas alternativas
-                        const alternativeRoutes = JSON.parse(data.alternative_routes);
-                        if (alternativeRoutes) {
-                            const options = data.options;
+                        if (data.alternative_routes) {
+                            const alternativeRoutes = JSON.parse(data.alternative_routes);
+                            const options = JSON.parse(data.options);
                             options.forEach((option, index) => {
                                 const selectElement = document.getElementById(`path-option-${index}`);
                                 if (selectElement) {
