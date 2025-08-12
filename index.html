@@ -1,13 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Creador de Juegos - Admin</title>
     <link rel="stylesheet" href="admin-styles.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛠️</text></svg>">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
+
 <body>
     <header>
         <h1>🎮 Creador de Juegos de Escape</h1>
@@ -71,62 +73,59 @@
         </section>
 
         <section id="location-list-section" class="admin-section hidden">
-            <h2>Ubicaciones del Juego: <span id="current-game-name"></span></h2>
-            <button id="add-location-btn" class="main-action-button">Añadir Nueva Ubicación</button>
+            <h2>Ubicaciones de <span id="current-game-name"></span></h2>
+            <button id="add-location-btn" class="secondary-action-button">Añadir Nueva Ubicación</button>
+            <button id="back-to-games-btn" class="back-button">← Volver a Juegos</button>
             <div id="location-list">
                 <p>Cargando ubicaciones...</p>
-            </div>
-            <div class="form-actions">
-                <button type="button" id="back-to-games-btn" class="back-button">Volver a Juegos</button>
-                <button type="button" id="preview-game-btn" class="preview-button">Previsualizar Juego</button>
             </div>
         </section>
 
         <section id="location-form-section" class="admin-section hidden">
-            <h2><span id="location-form-title">Crear Nueva Ubicación</span></h2>
+            <h2><span id="location-form-title">Crear Nueva Ubicación</span><span class="game-name-display"></span></h2>
             <form id="location-form">
                 <input type="hidden" id="location-id">
                 <input type="hidden" id="current-game-id-location">
 
-                <label for="location-name">Nombre de la Ubicación (ej: Plaza Mayor):</label>
+                <label for="location-name">Nombre de la Ubicación:</label>
                 <input type="text" id="location-name" required>
 
-                <label for="location-order-index">Orden (solo si el juego es lineal):</label>
-                <input type="number" id="location-order-index" min="1" value="1">
+                <label for="location-order-index">Orden de la Ubicación:</label>
+                <input type="number" id="location-order-index" value="1" min="1" required>
 
-                <fieldset class="fieldset-map">
-                    <legend>Coordenadas de la Ubicación</legend>
-                    <label for="location-latitude">Latitud:</label>
-                    <input type="number" id="location-latitude" step="any" placeholder="Ej: 40.7128" required>
-                    <label for="location-longitude">Longitud:</label>
-                    <input type="number" id="location-longitude" step="any" placeholder="Ej: -74.0060" required>
-                    <label for="location-tolerance">Radio de Tolerancia GPS (metros):</label>
-                    <input type="number" id="location-tolerance" min="0" value="10" required>
-                    <p class="help-text">El radio de proximidad para que el GPS del jugador detecte la llegada a esta ubicación.</p>
+                <label for="location-initial-narrative">Narrativa de Llegada:</label>
+                <textarea id="location-initial-narrative" placeholder="Qué ve y experimenta el jugador al llegar a la ubicación."></textarea>
 
-                    <div id="location-map" style="height: 300px; width: 100%; margin-top: 15px; border: 1px solid var(--border);"></div>
-                    <button type="button" id="get-current-location-btn" class="secondary-action-button">Obtener Ubicación Actual</button>
-                    <p class="help-text">Haz clic en el mapa para establecer el punto de la ubicación o usa tu ubicación actual.</p>
-                </fieldset>
-
-                <label for="pre-arrival-narrative">Narrativa PRE-LLEGADA (Se muestra ANTES de que el jugador alcance la ubicación):</label>
-                <textarea id="pre-arrival-narrative"></textarea>
-                <p class="help-text">Describe el contexto que lleva al jugador a esta ubicación, un desafío previo, o el inicio del camino hacia ella.</p>
-
-
-                <label for="location-initial-narrative">Narrativa de INTRODUCCIÓN de Pruebas (Se muestra al LLEGAR a la ubicación):</label>
-                <textarea id="location-initial-narrative"></textarea>
-                <p class="help-text">Describe el entorno o la narrativa al llegar el jugador a esta ubicación (justo antes de ver las pruebas).</p>
-
-                <label for="location-image-url">URL de Imagen (para la ubicación - opcional):</label>
+                <label for="location-image-url">URL de Imagen (opcional):</label>
                 <input type="url" id="location-image-url" placeholder="https://ejemplo.com/imagen_ubicacion.jpg">
 
-                <label for="location-audio-url">URL de Audio (para la ubicación - opcional):</label>
+                <label for="location-audio-url">URL de Audio (opcional):</label>
                 <input type="url" id="location-audio-url" placeholder="https://ejemplo.com/audio_ubicacion.mp3">
 
-                <label for="location-is-selectable-trials">Pruebas Seleccionables en esta Ubicación (el jugador elige el orden):</label>
-                <input type="checkbox" id="location-is-selectable-trials">
-                <p class="help-text">Si está activado, el jugador verá un listado de pruebas y podrá elegir cuál hacer. Si no, se harán en el orden definido.</p>
+                <label for="pre-arrival-narrative">Narrativa de Pre-Llegada:</label>
+                <textarea id="pre-arrival-narrative" placeholder="Qué ve el jugador en la app antes de llegar a la ubicación."></textarea>
+
+                <div class="form-check-group">
+                    <input type="checkbox" id="location-is-selectable-trials">
+                    <label for="location-is-selectable-trials">Pruebas seleccionables por el jugador</label>
+                </div>
+
+                <div class="map-input-group">
+                    <label>Ubicación GPS:</label>
+                    <div id="location-map" style="height: 400px;"></div>
+                    <p class="help-text">Haz clic en el mapa para establecer un punto. La latitud y longitud se rellenarán automáticamente.</p>
+                    <button type="button" id="get-current-location-btn" class="secondary-action-button">Usar mi ubicación actual</button>
+                    <div class="coords-group">
+                        <label for="location-latitude">Latitud:</label>
+                        <input type="number" id="location-latitude" step="any" required>
+                        <label for="location-longitude">Longitud:</label>
+                        <input type="number" id="location-longitude" step="any" required>
+                    </div>
+                </div>
+
+                <label for="location-tolerance">Tolerancia GPS (metros):</label>
+                <input type="number" id="location-tolerance" value="10" min="1" required>
+                <p class="help-text">El radio en metros desde el punto GPS para considerar que el jugador ha llegado.</p>
 
                 <div class="form-actions">
                     <button type="submit" class="save-button">Guardar Ubicación</button>
@@ -136,110 +135,111 @@
         </section>
 
         <section id="trial-list-section" class="admin-section hidden">
-            <h2>Pruebas de la Ubicación: <span id="current-location-name"></span></h2>
-            <button id="add-trial-btn" class="main-action-button">Añadir Nueva Prueba</button>
+            <h2>Pruebas en <span id="current-location-name"></span><span class="game-name-display"></span></h2>
+            <button id="add-trial-btn" class="secondary-action-button">Añadir Nueva Prueba</button>
+            <button id="back-to-locations-btn" class="back-button">← Volver a Ubicaciones</button>
             <div id="trial-list">
                 <p>Cargando pruebas...</p>
-            </div>
-            <div class="form-actions">
-                <button type="button" id="back-to-locations-btn" class="back-button">Volver a Ubicaciones</button>
             </div>
         </section>
 
         <section id="trial-form-section" class="admin-section hidden">
-            <h2><span id="trial-form-title">Crear Nueva Prueba</span></h2>
+            <h2><span id="trial-form-title">Crear Nueva Prueba</span><span class="game-name-display"></span> | <span id="current-location-name"></span></h2>
             <form id="trial-form">
                 <input type="hidden" id="trial-id">
                 <input type="hidden" id="current-location-id-trial">
 
-                <label for="trial-type">Tipo de Prueba:</label>
-                <select id="trial-type" required>
-                    <option value="">Selecciona un tipo</option>
-                    <option value="qr">QR</option>
-                    <option value="gps">GPS</option>
-                    <option value="text">Texto</option>
-                </select>
-
-                <label for="trial-order-index">Orden (solo si las pruebas son lineales en la ubicación):</label>
-                <input type="number" id="trial-order-index" min="1" value="1">
-                <p class="help-text">Si la ubicación tiene pruebas seleccionables, este campo se ignora.</p>
-
-                <label for="trial-name">Título de la Prueba</label>
+                <label for="trial-name">Título de la Prueba:</label>
                 <input type="text" id="trial-name" required>
 
-                <label for="trial-narrative">Narrativa de la Prueba:</label>
-                <textarea id="trial-narrative"></textarea>
-                <p class="help-text">Descripción de la prueba, pistas de qué hacer o qué buscar para resolverla.</p>
+                <label for="trial-type">Tipo de Prueba:</label>
+                <select id="trial-type" required>
+                    <option value="" disabled selected>Selecciona un tipo de prueba</option>
+                    <option value="text">Pregunta de Texto</option>
+                    <option value="qr">Escaneo de QR</option>
+                    <option value="gps">Ubicación GPS</option>
+                </select>
 
-                <label for="trial-image-url">URL de Imagen (para la prueba - opcional):</label>
+                <label for="trial-order-index">Orden de la Prueba:</label>
+                <input type="number" id="trial-order-index" value="1" min="1" required>
+
+                <label for="trial-narrative">Narrativa de la Prueba:</label>
+                <textarea id="trial-narrative" placeholder="Lo que el jugador lee para resolver la prueba."></textarea>
+
+                <label for="trial-image-url">URL de Imagen (opcional):</label>
                 <input type="url" id="trial-image-url" placeholder="https://ejemplo.com/imagen_prueba.jpg">
 
-                <label for="trial-audio-url">URL de Audio (para la prueba - opcional):</label>
+                <label for="trial-audio-url">URL de Audio (opcional):</label>
                 <input type="url" id="trial-audio-url" placeholder="https://ejemplo.com/audio_prueba.mp3">
 
-                <label for="trial-hint-count">Número de Pistas Disponibles (máx. 3):</label>
-                <input type="number" id="trial-hint-count" min="0" max="3" value="3" required>
+                <label for="trial-hint-count">Número de Pistas:</label>
+                <input type="number" id="trial-hint-count" value="3" min="0" max="3">
+                <p class="help-text">Número de pistas disponibles (máximo 3).</p>
 
-                <label for="trial-hint-cost">Coste de Cada Pista (puntos):</label>
-                <input type="number" id="trial-hint-cost" min="0" value="10" required>
+                <label for="hint1">Pista 1:</label>
+                <textarea id="hint1" placeholder="Primera pista"></textarea>
+                <label for="hint2">Pista 2:</label>
+                <textarea id="hint2" placeholder="Segunda pista"></textarea>
+                <label for="hint3">Pista 3:</label>
+                <textarea id="hint3" placeholder="Tercera pista"></textarea>
 
-                <fieldset class="trial-specific-fields">
-                    <legend>Configuración de Pistas</legend>
-                    <label for="hint1">Pista 1 (Opcional):</label>
-                    <textarea id="hint1"></textarea>
-                    <label for="hint2">Pista 2 (Opcional):</label>
-                    <textarea id="hint2"></textarea>
-                    <label for="hint3">Pista 3 (Opcional):</label>
-                    <textarea id="hint3"></textarea>
-                    <p class="help-text">El jugador podrá pedir estas pistas. El número de pistas activas se configura arriba.</p>
-                </fieldset>
+                <label for="trial-hint-cost">Coste de Pista:</label>
+                <input type="number" id="trial-hint-cost" value="10" min="0">
+                <p class="help-text">Puntuación que se resta por cada pista utilizada.</p>
 
-                <div id="qr-fields" class="hidden trial-specific-fields">
-                    <h3>Configuración QR</h3>
-                    <label for="qr-content">Contenido esperado del QR (cadena de texto):</label>
-                    <input type="text" id="qr-content">
-                    <p class="help-text">El jugador deberá escanear un QR que contenga exactamente este texto.</p>
+                <!-- Campos de prueba QR -->
+                <div id="qr-fields" class="trial-specific-fields hidden">
+                    <label for="qr-content">Contenido del QR:</label>
+                    <input type="text" id="qr-content" placeholder="El texto que el jugador debe escanear para pasar la prueba.">
                 </div>
 
-                <div id="gps-fields" class="hidden trial-specific-fields">
-                    <h3>Configuración GPS</h3>
-                    <label for="gps-latitude">Latitud:</label>
+                <!-- Campos de prueba GPS -->
+                <div id="gps-fields" class="trial-specific-fields hidden">
+                    <label for="gps-latitude">Latitud del GPS:</label>
                     <input type="number" id="gps-latitude" step="any">
-                    <label for="gps-longitude">Longitud:</label>
+                    <label for="gps-longitude">Longitud del GPS:</label>
                     <input type="number" id="gps-longitude" step="any">
-                    <label for="gps-tolerance">Tolerancia (metros):</label>
-                    <input type="number" id="gps-tolerance" min="0" value="10">
-                    <p class="help-text">El jugador debe estar dentro de este radio para validar la prueba.</p>
+                    <label for="gps-tolerance">Tolerancia GPS (metros):</label>
+                    <input type="number" id="gps-tolerance" value="10" min="1">
                 </div>
 
-                <div id="text-fields" class="hidden trial-specific-fields">
-                    <h3>Configuración Texto</h3>
-                    <label for="text-question">Pregunta:</label>
+                <!-- Campos de prueba de Texto -->
+                <div id="text-fields" class="trial-specific-fields hidden">
+                    <label for="text-question">Pregunta de Texto:</label>
                     <textarea id="text-question"></textarea>
-
                     <label for="text-answer-type">Tipo de Respuesta:</label>
                     <select id="text-answer-type">
-                        <option value="single_choice">Respuesta Única</option>
-                        <option value="numeric">Numérica</option>
-                        <option value="multiple_options">Opciones Múltiples (Separar por ;)</option>
-                        <option value="ordering">Ordenación (Separar por ;)</option>
+                        <option value="single_choice">Respuesta de texto libre</option>
+                        <option value="numeric">Respuesta numérica</option>
+                        <option value="multiple_options">Múltiples Opciones</option>
+                        <option value="ordering">Ordenación</option>
                     </select>
 
-                    <div id="single-numeric-answer-fields" class="answer-type-fields">
+                    <div id="single-numeric-answer-fields" class="hidden">
                         <label for="text-correct-answer-single-numeric">Respuesta Correcta:</label>
                         <input type="text" id="text-correct-answer-single-numeric">
-                        <p class="help-text">Para Numérica, solo números. Para Respuesta Única, el texto exacto.</p>
+                        <p class="help-text">La respuesta que el jugador debe introducir.</p>
                     </div>
 
-                    <div id="multi-ordering-answer-fields" class="hidden answer-type-fields">
+                    <div id="multi-ordering-answer-fields" class="hidden">
                         <label for="text-options">Opciones (separadas por punto y coma ';'):</label>
-                        <textarea id="text-options" placeholder="Opción A;Opción B;Opción B"></textarea>
+                        <textarea id="text-options" placeholder="Opción A;Opción B;Opción C"></textarea>
                         <p class="help-text">Las opciones que el jugador verá para elegir o para ordenar.</p>
                         <label for="text-correct-answer-multi-ordering">Respuesta Correcta (ej: Opción1;Opción3;Opción2 para ordenación):</label>
                         <input type="text" id="text-correct-answer-multi-ordering">
                         <p class="help-text">Para Opciones Múltiples, la opción correcta. Para Ordenación, el orden correcto de las opciones (ej: A;C;B).</p>
                     </div>
                 </div>
+
+                <!-- Nuevos campos para la funcionalidad de multi-ruta -->
+                <div id="multi-path-fields" class="trial-specific-fields hidden">
+                    <h3>Rutas Alternativas</h3>
+                    <p class="help-text">Define la ubicación a la que se moverá el jugador dependiendo de la opción elegida. Usa la "Respuesta Correcta" de arriba para indicar la ruta principal.</p>
+                    <div id="multi-path-list">
+                        <!-- Los campos se generarán dinámicamente aquí -->
+                    </div>
+                </div>
+
 
                 <div class="form-actions">
                     <button type="submit" class="save-button">Guardar Prueba</button>
@@ -258,4 +258,5 @@
     <script src="admin-supabase-config.js"></script>
     <script src="admin-script.js"></script>
 </body>
+
 </html>
